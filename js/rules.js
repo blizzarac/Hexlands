@@ -13,7 +13,7 @@ const TOWER_UPGRADE_COST = 20;      // tower (def 2) -> fort (def 3)
 const MAX_FARM_LEVEL = 3;
 const FARM_BASE_COST = 12;
 const FARM_COST_STEP = 2;
-const FARM_INCOME = 4;              // per farm level
+const FARM_INCOME = { plains: 4, meadow: 6 }; // per farm level, by terrain
 const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
 const TREE_CHOP_REWARD = 3;
 const TERRAIN_INCOME = { plains: 1, meadow: 2, hills: 0 };
@@ -175,7 +175,9 @@ function provinceIncome(state, p) {
     const t = state.tiles.get(k);
     if (t.tree || t.grave) continue;
     income += TERRAIN_INCOME[t.terrain] ?? 1;
-    if (t.structure === "farm") income += FARM_INCOME * (t.structureLevel || 1);
+    if (t.structure === "farm") {
+      income += (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) * (t.structureLevel || 1);
+    }
   }
   return income;
 }

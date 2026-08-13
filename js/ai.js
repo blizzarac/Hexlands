@@ -185,14 +185,17 @@ function spendMoney(state, player, province, diff, style) {
   // Farm first: compounding income wins long games. Build new farms while
   // there is room; once there isn't, upgrade existing ones.
   if (Math.random() < style.farmChance) {
-    const spot = province.tiles.find(k => canPlaceFarm(state, province, k));
+    const spots = province.tiles.filter(k => canPlaceFarm(state, province, k));
+    // Meadow farms yield +6 per level instead of +4 — take those spots first.
+    const spot = spots.find(k => state.tiles.get(k).terrain === "meadow") || spots[0];
     if (spot && province.money >= farmCost(state, province) + UNIT_COST + diff.reserve) {
       buyFarm(state, province.capitalKey, spot);
     } else if (!spot) {
-      const up = province.tiles.find(k => {
+      const ups = province.tiles.filter(k => {
         const t = state.tiles.get(k);
         return t.structure === "farm" && (t.structureLevel || 1) < MAX_FARM_LEVEL;
       });
+      const up = ups.find(k => state.tiles.get(k).terrain === "meadow") || ups[0];
       if (up) {
         const cost = FARM_UPGRADE_COSTS[(state.tiles.get(up).structureLevel || 1) + 1];
         if (province.money >= cost + UNIT_COST + diff.reserve) {

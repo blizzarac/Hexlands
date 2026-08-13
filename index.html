@@ -25,7 +25,7 @@
         <button id="btn-unit"  title="Buy a peasant (level 1). Drop it on an existing unit to upgrade it.">Unit ⬡10</button>
         <button id="btn-tower" title="Tower: defends its tile and neighbours at level 2, and friendly units standing next to it fight at +1 level.">Tower ⬡15</button>
         <button id="btn-stower" title="Fort: defends at level 3. Build on an empty tile (⬡35) or click one of your towers to upgrade it (⬡20).">Fort ⬡35</button>
-        <button id="btn-farm"  title="Farm: +4 income, next to the capital or another farm. Click an existing farm to upgrade it (⬡20 then ⬡30, +4 income each).">Farm <span id="farm-cost">⬡12</span></button>
+        <button id="btn-farm"  title="Farm: +4 income per level (+6 on meadows), next to the capital or another farm. Click an existing farm to upgrade it (⬡20 then ⬡30).">Farm <span id="farm-cost">⬡12</span></button>
         <button id="btn-undo"  title="Undo your last action this turn.">Undo</button>
         <button id="btn-end"   class="primary" title="End your turn.">End Turn</button>
       </div>
@@ -65,7 +65,7 @@
         <ul>
           <li>Click one of your provinces (your colour is <b class="you">blue</b>) to select it.</li>
           <li>Terrain matters: plains earn 1 coin per round, lush <b>meadows</b> earn 2, rocky <b>hills</b> earn nothing — but a tower built on hills defends one level higher. Farms can't be built on hills.</li>
-          <li>Farms add 4 income per level. Units cost upkeep every round — if a province goes broke, all its units die.</li>
+          <li>Farms add 4 income per level — 6 on meadows, so a maxed meadow farm earns 20 a round. Units cost upkeep every round — if a province goes broke, all its units die.</li>
           <li>Click a unit, then a highlighted tile to move it. Units capture adjacent tiles that are defended at a <i>strictly lower</i> level than their own — equal defence always blocks, even for level 4.</li>
           <li>Units, towers and capitals defend their tile <i>and</i> all neighbouring tiles.</li>
           <li>Merge two units (move one onto the other) to make a stronger one.</li>
