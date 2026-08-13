@@ -9,9 +9,12 @@ const UNIT_COST = 10;
 const UNIT_UPKEEP = [0, 2, 6, 18, 36]; // indexed by level 1..4
 const TOWER_COST = 15;
 const STRONG_TOWER_COST = 35;
+const TOWER_UPGRADE_COST = 20;      // tower (def 2) -> fort (def 3)
+const MAX_FARM_LEVEL = 3;
 const FARM_BASE_COST = 12;
 const FARM_COST_STEP = 2;
-const FARM_INCOME = 4;
+const FARM_INCOME = 4;              // per farm level
+const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
 const TREE_CHOP_REWARD = 3;
 const TREE_SPREAD_CHANCE = 0.04;
 const START_MONEY = 10;
@@ -107,6 +110,7 @@ function recomputeProvinces(state) {
       capitalKey = pickCapitalTile(state, comp);
       const t = state.tiles.get(capitalKey);
       t.structure = "capital";
+      t.structureLevel = null; // may overwrite a farm
       t.tree = null;
       t.grave = false;
     } else {
@@ -169,7 +173,7 @@ function provinceIncome(state, p) {
     const t = state.tiles.get(k);
     if (t.tree || t.grave) continue;
     income += 1;
-    if (t.structure === "farm") income += FARM_INCOME;
+    if (t.structure === "farm") income += FARM_INCOME * (t.structureLevel || 1);
   }
   return income;
 }
@@ -204,8 +208,7 @@ function tileDefense(state, key) {
     if (!tt || tt.owner !== t.owner) return;
     if (tt.unit) d = Math.max(d, tt.unit.level);
     if (tt.structure === "capital") d = Math.max(d, 1);
-    if (tt.structure === "tower") d = Math.max(d, 2);
-    if (tt.structure === "strongtower") d = Math.max(d, 3);
+    if (tt.structure === "tower") d = Math.max(d, 1 + (tt.structureLevel || 1));
   };
   consider(t);
   for (const nk of neighborKeys(key)) consider(state.tiles.get(nk));
@@ -327,6 +330,7 @@ function moveUnit(state, fromKey, toKey) {
   dest.owner = state.currentPlayer;
   dest.unit = unit;
   dest.structure = null;
+  dest.structureLevel = null;
   dest.tree = null;
   dest.grave = false;
   unit.moved = true;
@@ -373,6 +377,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   dest.owner = state.currentPlayer;
   dest.unit = { level: 1, moved: true };
   dest.structure = null;
+  dest.structureLevel = null;
   dest.tree = null;
   dest.grave = false;
   recomputeProvinces(state);
@@ -384,15 +389,26 @@ function buyTower(state, provinceCapital, targetKey, strong) {
   const province = state.provinces.find(
     p => p.capitalKey === provinceCapital && p.owner === state.currentPlayer);
   if (!province) return { ok: false, reason: "No such province" };
-  const cost = strong ? STRONG_TOWER_COST : TOWER_COST;
-  if (province.money < cost) return { ok: false, reason: "Not enough money" };
   if (!province.tiles.includes(targetKey)) return { ok: false, reason: "Must build on your own province" };
   const dest = state.tiles.get(targetKey);
+
+  // Upgrade path: a fort purchase aimed at an existing tower.
+  if (strong && dest.structure === "tower") {
+    if ((dest.structureLevel || 1) >= 2) return { ok: false, reason: "Already a fort" };
+    if (province.money < TOWER_UPGRADE_COST) return { ok: false, reason: "Not enough money" };
+    province.money -= TOWER_UPGRADE_COST;
+    dest.structureLevel = 2;
+    return { ok: true };
+  }
+
+  const cost = strong ? STRONG_TOWER_COST : TOWER_COST;
+  if (province.money < cost) return { ok: false, reason: "Not enough money" };
   if (dest.unit || dest.structure || dest.tree || dest.grave) {
     return { ok: false, reason: "Tile must be empty" };
   }
   province.money -= cost;
-  dest.structure = strong ? "strongtower" : "tower";
+  dest.structure = "tower";
+  dest.structureLevel = strong ? 2 : 1;
   return { ok: true };
 }
 
@@ -411,13 +427,27 @@ function buyFarm(state, provinceCapital, targetKey) {
   const province = state.provinces.find(
     p => p.capitalKey === provinceCapital && p.owner === state.currentPlayer);
   if (!province) return { ok: false, reason: "No such province" };
+  const dest = state.tiles.get(targetKey);
+
+  // Upgrade path: a farm purchase aimed at an existing farm.
+  if (dest && dest.structure === "farm" && province.tiles.includes(targetKey)) {
+    const level = dest.structureLevel || 1;
+    if (level >= MAX_FARM_LEVEL) return { ok: false, reason: "Farm is already max level" };
+    const cost = FARM_UPGRADE_COSTS[level + 1];
+    if (province.money < cost) return { ok: false, reason: "Not enough money" };
+    province.money -= cost;
+    dest.structureLevel = level + 1;
+    return { ok: true };
+  }
+
   const cost = farmCost(state, province);
   if (province.money < cost) return { ok: false, reason: "Not enough money" };
   if (!canPlaceFarm(state, province, targetKey)) {
     return { ok: false, reason: "Farms need an empty tile next to the capital or another farm" };
   }
   province.money -= cost;
-  state.tiles.get(targetKey).structure = "farm";
+  dest.structure = "farm";
+  dest.structureLevel = 1;
   return { ok: true };
 }
 

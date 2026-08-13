@@ -120,12 +120,19 @@ function createUI(canvas, renderer, callbacks) {
       }
     } else if (kind === "farm") {
       for (const k of province.tiles) {
+        const t = state.tiles.get(k);
         if (canPlaceFarm(state, province, k)) ui.highlights.set(k, "build");
+        else if (t.structure === "farm" && (t.structureLevel || 1) < MAX_FARM_LEVEL) {
+          ui.highlights.set(k, "upgrade");
+        }
       }
     } else {
       for (const k of province.tiles) {
         const t = state.tiles.get(k);
         if (!t.unit && !t.structure && !t.tree && !t.grave) ui.highlights.set(k, "build");
+        else if (kind === "strongtower" && t.structure === "tower" && (t.structureLevel || 1) < 2) {
+          ui.highlights.set(k, "upgrade");
+        }
       }
     }
   };
@@ -186,10 +193,23 @@ function updateHUD(state, ui, undoAvailable) {
 
   const canAct = !!own && !state.gameOver;
   const btn = id => document.getElementById(id);
+  const hasUpgradableTower = own && own.tiles.some(k => {
+    const t = state.tiles.get(k);
+    return t.structure === "tower" && (t.structureLevel || 1) < 2;
+  });
+  const cheapestFarmAction = own ? Math.min(farmCost(state, own),
+    ...own.tiles
+      .filter(k => {
+        const t = state.tiles.get(k);
+        return t.structure === "farm" && (t.structureLevel || 1) < MAX_FARM_LEVEL;
+      })
+      .map(k => FARM_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
+  ) : Infinity;
   btn("btn-unit").disabled = !canAct || own.money < UNIT_COST;
   btn("btn-tower").disabled = !canAct || own.money < TOWER_COST;
-  btn("btn-stower").disabled = !canAct || own.money < STRONG_TOWER_COST;
-  btn("btn-farm").disabled = !canAct || own.money < farmCost(state, own);
+  btn("btn-stower").disabled = !canAct ||
+    own.money < (hasUpgradableTower ? TOWER_UPGRADE_COST : STRONG_TOWER_COST);
+  btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;
   document.getElementById("farm-cost").textContent =

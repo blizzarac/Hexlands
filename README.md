@@ -25,6 +25,9 @@ You are **blue**. Destroy every enemy province to win.
 - **Combat**: a unit captures an adjacent tile if its level is higher than the
   tile's defence. Units, towers (def 2), forts (def 3) and capitals (def 1)
   defend their own tile *and* all six neighbours. Level 4 beats everything.
+- **Upgrades**: with the Farm or Fort button armed, click an existing building
+  (gold outline) to upgrade it. Farms level up to 3 (+4 income per level,
+  costing 20 then 30); a tower upgrades into a fort for 20.
 - **Merging**: move a unit onto a friendly unit to combine their levels
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree

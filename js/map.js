@@ -8,9 +8,10 @@ function generateMap(tileCount, playerCount) {
     tiles.set(keyOf(q, r), {
       q, r,
       owner: -1,
-      unit: null,       // { level, moved }
-      structure: null,  // 'capital' | 'tower' | 'strongtower' | 'farm'
-      tree: null,       // 'pine' | 'palm'
+      unit: null,           // { level, moved }
+      structure: null,      // 'capital' | 'tower' | 'farm'
+      structureLevel: null, // tower 1-2 (fort), farm 1-3; null for capital
+      tree: null,           // 'pine' | 'palm'
       grave: false,
     });
   };

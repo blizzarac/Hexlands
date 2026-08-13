@@ -117,6 +117,11 @@ function createRenderer(canvas) {
           ctx.strokeStyle = "rgba(255,70,60,0.95)";
           ctx.lineWidth = 2.5;
           ctx.stroke();
+        } else if (kind === "upgrade") {
+          hexPath(x, y, 0.8);
+          ctx.strokeStyle = "rgba(255,210,74,0.95)";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
         } else {
           ctx.beginPath();
           ctx.arc(x, y, 5.5, 0, Math.PI * 2);
@@ -132,9 +137,8 @@ function createRenderer(canvas) {
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
       if (t.structure === "capital") drawCapital(x, y);
-      if (t.structure === "tower") drawTower(x, y, false);
-      if (t.structure === "strongtower") drawTower(x, y, true);
-      if (t.structure === "farm") drawFarm(x, y);
+      if (t.structure === "tower") drawTower(x, y, (t.structureLevel || 1) >= 2);
+      if (t.structure === "farm") drawFarm(x, y, t.structureLevel || 1);
       if (t.unit) drawUnit(x, y, t.unit, t.owner === state.currentPlayer && !state.players[t.owner].isAI);
     }
 
@@ -221,7 +225,7 @@ function createRenderer(canvas) {
     }
   }
 
-  function drawFarm(x, y) {
+  function drawFarm(x, y, level) {
     ctx.fillStyle = "#e8c56a";
     ctx.strokeStyle = "#6e5518";
     ctx.lineWidth = 1.4;
@@ -235,6 +239,13 @@ function createRenderer(canvas) {
     ctx.lineTo(x + 8.5, y - 1);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
+    // level pips on the roof
+    ctx.fillStyle = "#ffe9a8";
+    for (let i = 0; i < level - 1; i++) {
+      ctx.beginPath();
+      ctx.arc(x - 3 + i * 6, y - 3.2, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawUnit(x, y, unit, isHumanTurnUnit) {

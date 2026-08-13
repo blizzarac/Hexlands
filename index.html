@@ -24,8 +24,8 @@
       <div id="actions">
         <button id="btn-unit"  title="Buy a peasant (level 1). Drop it on an existing unit to upgrade it.">Unit ⬡10</button>
         <button id="btn-tower" title="Tower: defends its tile and neighbours at level 2.">Tower ⬡15</button>
-        <button id="btn-stower" title="Strong tower: defends at level 3.">Fort ⬡35</button>
-        <button id="btn-farm"  title="Farm: +4 income. Must be next to the capital or another farm.">Farm <span id="farm-cost">⬡12</span></button>
+        <button id="btn-stower" title="Fort: defends at level 3. Build on an empty tile (⬡35) or click one of your towers to upgrade it (⬡20).">Fort ⬡35</button>
+        <button id="btn-farm"  title="Farm: +4 income, next to the capital or another farm. Click an existing farm to upgrade it (⬡20 then ⬡30, +4 income each).">Farm <span id="farm-cost">⬡12</span></button>
         <button id="btn-undo"  title="Undo your last action this turn.">Undo</button>
         <button id="btn-end"   class="primary" title="End your turn.">End Turn</button>
       </div>
@@ -69,6 +69,7 @@
           <li>Units, towers and capitals defend their tile <i>and</i> all neighbouring tiles.</li>
           <li>Merge two units (move one onto the other) to make a stronger one. Level 4 beats everything.</li>
           <li>Chopping a tree earns 3 coins. Trees spread and block income, so keep them in check.</li>
+          <li>Farms and towers can be upgraded: with the Farm or Fort button armed, click the existing building (gold outline). Farms go to level 3 (+4 income each); a tower upgrades into a fort.</li>
           <li>Each AI has a playstyle, shown next to its name: ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands), 🛡️ Turtle (fortifies), ⚖️ Balanced.</li>
           <li>Win by destroying every enemy province.</li>
         </ul>

@@ -122,8 +122,8 @@ function targetValue(state, key, player, diff, style) {
   const t = state.tiles.get(key);
   let value = t.owner === -1 ? style.neutralValue : style.enemyValue;
   if (t.structure === "capital") value += 12 * style.structureMult;
-  else if (t.structure === "tower" || t.structure === "strongtower") value += 6 * style.structureMult;
-  else if (t.structure === "farm") value += 6 * style.structureMult;
+  else if (t.structure === "tower") value += 6 * style.structureMult;
+  else if (t.structure === "farm") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
   if (t.unit) value += t.unit.level * 2;
   // Bonus for tiles that cut into enemy territory.
   for (const nk of neighborKeys(key)) {
@@ -181,11 +181,24 @@ function tryMerge(state, player, province, diff, style) {
 }
 
 function spendMoney(state, player, province, diff, style) {
-  // Farm first: compounding income wins long games.
-  const fCost = farmCost(state, province);
-  if (province.money >= fCost + UNIT_COST + diff.reserve && Math.random() < style.farmChance) {
+  // Farm first: compounding income wins long games. Build new farms while
+  // there is room; once there isn't, upgrade existing ones.
+  if (Math.random() < style.farmChance) {
     const spot = province.tiles.find(k => canPlaceFarm(state, province, k));
-    if (spot) buyFarm(state, province.capitalKey, spot);
+    if (spot && province.money >= farmCost(state, province) + UNIT_COST + diff.reserve) {
+      buyFarm(state, province.capitalKey, spot);
+    } else if (!spot) {
+      const up = province.tiles.find(k => {
+        const t = state.tiles.get(k);
+        return t.structure === "farm" && (t.structureLevel || 1) < MAX_FARM_LEVEL;
+      });
+      if (up) {
+        const cost = FARM_UPGRADE_COSTS[(state.tiles.get(up).structureLevel || 1) + 1];
+        if (province.money >= cost + UNIT_COST + diff.reserve) {
+          buyFarm(state, province.capitalKey, up);
+        }
+      }
+    }
   }
 
   // Buy units that immediately capture something.
@@ -211,18 +224,27 @@ function spendMoney(state, player, province, diff, style) {
   const p = state.provinces.find(x => x.owner === player && x.tiles.includes(province.capitalKey));
   if (!p) return;
   province = p;
-  if (province.money >= TOWER_COST + UNIT_COST + diff.reserve &&
-      Math.random() < style.towerChance) {
+  if (Math.random() < style.towerChance) {
+    const nearEnemy = k => neighborKeys(k).some(nk => {
+      const nt = state.tiles.get(nk);
+      return nt && nt.owner !== player && nt.owner !== -1;
+    });
     const spot = province.tiles.find(k => {
       const t = state.tiles.get(k);
       if (t.unit || t.structure || t.tree || t.grave) return false;
       if (tileDefense(state, k) >= 2) return false;
-      return neighborKeys(k).some(nk => {
-        const nt = state.tiles.get(nk);
-        return nt && nt.owner !== player && nt.owner !== -1;
-      });
+      return nearEnemy(k);
     });
-    if (spot) buyTower(state, province.capitalKey, spot, false);
+    if (spot && province.money >= TOWER_COST + UNIT_COST + diff.reserve) {
+      buyTower(state, province.capitalKey, spot, false);
+    } else if (!spot && province.money >= TOWER_UPGRADE_COST + UNIT_COST + diff.reserve) {
+      // No room for a new tower: upgrade a frontline one to a fort instead.
+      const up = province.tiles.find(k => {
+        const t = state.tiles.get(k);
+        return t.structure === "tower" && (t.structureLevel || 1) < 2 && nearEnemy(k);
+      });
+      if (up) buyTower(state, province.capitalKey, up, true);
+    }
   }
 }
 
