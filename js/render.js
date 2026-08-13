@@ -270,61 +270,146 @@ function createRenderer(canvas) {
   }
 
   // Level 1 is a lone watchtower; level 2 is a full fort with keep, curtain
-  // wall, gate and flanking towers.
+  // wall, gate and flanking towers. Two-tone stone, masonry courses, conical
+  // roofs and lit windows keep them from reading as grey boxes.
   function drawTower(x, y, fort) {
-    const GROUND = y + 7.5;
-    const stroke = "#22252b";
+    const G = y + 7.5;
+    const stroke = "#2b2f38";
+    const stone = "#9aa3b2";
+    const stoneShade = "#6a7280";
+    const roofC = "#a8453a";
+    const roofShade = "#7e332c";
 
-    // One crenellated block; (bx, GROUND) is the bottom-centre.
-    const block = (bx, w, h, fill) => {
-      ctx.lineWidth = 1.2;
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
+    const courses = (bx, w, h, n) => { // subtle masonry lines
+      ctx.strokeStyle = "rgba(30,35,45,0.30)";
+      ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.rect(bx - w / 2, GROUND - h, w, h);
-      ctx.fill(); ctx.stroke();
+      for (let i = 1; i <= n; i++) {
+        const yy = G - (h * i) / (n + 1);
+        ctx.moveTo(bx - w / 2 + 0.8, yy);
+        ctx.lineTo(bx + w / 2 - 0.8, yy);
+      }
+      ctx.stroke();
+    };
+
+    const body = (bx, w, h) => {
+      ctx.fillStyle = stone;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.rect(bx - w / 2, G - h, w, h); ctx.fill();
+      ctx.fillStyle = stoneShade; // right-side shading
+      ctx.fillRect(bx + w / 2 - w * 0.32, G - h, w * 0.32, h);
+      ctx.beginPath(); ctx.rect(bx - w / 2, G - h, w, h); ctx.stroke();
+      courses(bx, w, h, Math.max(2, Math.round(h / 4.5)));
+    };
+
+    const crenellate = (bx, w, topY) => {
       const n = Math.max(2, Math.round(w / 3.2));
       const step = w / n;
+      ctx.fillStyle = stone; ctx.strokeStyle = stroke; ctx.lineWidth = 1;
       ctx.beginPath();
       for (let i = 0; i < n; i++) {
-        ctx.rect(bx - w / 2 + i * step + step * 0.18, GROUND - h - 2.4, step * 0.5, 2.4);
+        ctx.rect(bx - w / 2 + i * step + step * 0.15, topY - 2.4, step * 0.5, 2.4);
       }
       ctx.fill(); ctx.stroke();
     };
 
+    const cone = (bx, topY, w, h) => {
+      ctx.strokeStyle = stroke; ctx.lineWidth = 1;
+      ctx.fillStyle = roofC;
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2 - 1.3, topY);
+      ctx.lineTo(bx, topY - h);
+      ctx.lineTo(bx + w / 2 + 1.3, topY);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = roofShade; // shaded half
+      ctx.beginPath();
+      ctx.moveTo(bx, topY);
+      ctx.lineTo(bx, topY - h);
+      ctx.lineTo(bx + w / 2 + 1.3, topY);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2 - 1.3, topY);
+      ctx.lineTo(bx, topY - h);
+      ctx.lineTo(bx + w / 2 + 1.3, topY);
+      ctx.closePath(); ctx.stroke();
+    };
+
+    const litWindow = (bx, by, w = 1.9, h = 3.1) => {
+      ctx.fillStyle = "#ffd97a";
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.rect(bx - w / 2, by, w, h); ctx.fill(); ctx.stroke();
+    };
+
     if (!fort) {
-      block(x, 8, 12, "#6b7280");
-      ctx.fillStyle = "#2c313b"; // arrow slit
-      ctx.fillRect(x - 0.9, GROUND - 9.5, 1.8, 4);
+      // Watchtower: tapered body with a jettied, crenellated crown.
+      ctx.fillStyle = stone; ctx.strokeStyle = stroke; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x - 5.2, G); ctx.lineTo(x - 3.9, G - 10);
+      ctx.lineTo(x + 3.9, G - 10); ctx.lineTo(x + 5.2, G);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = stoneShade;
+      ctx.beginPath();
+      ctx.moveTo(x + 1.4, G); ctx.lineTo(x + 1.8, G - 10);
+      ctx.lineTo(x + 3.9, G - 10); ctx.lineTo(x + 5.2, G);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 5.2, G); ctx.lineTo(x - 3.9, G - 10);
+      ctx.lineTo(x + 3.9, G - 10); ctx.lineTo(x + 5.2, G);
+      ctx.closePath(); ctx.stroke();
+      courses(x, 8.4, 10, 3);
+      // crown platform + crenellations
+      ctx.fillStyle = stone; ctx.strokeStyle = stroke; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.rect(x - 5.6, G - 12.2, 11.2, 2.2); ctx.fill(); ctx.stroke();
+      crenellate(x, 10.8, G - 12.2);
+      litWindow(x, G - 8);
       return;
     }
 
-    // Fort: tall keep behind, curtain wall with gate in front, side towers.
-    block(x, 7.5, 14, "#59616e");            // keep
-    block(x, 13, 6.5, "#6b7280");            // curtain wall
-    block(x - 8, 5.5, 10, "#6b7280");        // left tower
-    block(x + 8, 5.5, 10, "#6b7280");        // right tower
-    // gate arch
-    ctx.fillStyle = "#3a2f22";
+    // Fort, back to front: keep, curtain wall, flanking roofed towers.
+    body(x, 7.5, 14);
+    crenellate(x, 8.6, G - 14);
+    litWindow(x, G - 11);
+    body(x, 13, 6.5);
+    crenellate(x, 13, G - 6.5);
+    body(x - 8, 5.5, 9.5);
+    cone(x - 8, G - 9.5, 5.5, 5);
+    body(x + 8, 5.5, 9.5);
+    cone(x + 8, G - 9.5, 5.5, 5);
+    litWindow(x - 8, G - 7, 1.6, 2.4);
+    litWindow(x + 8, G - 7, 1.6, 2.4);
+    // wooden gate with portcullis
+    ctx.fillStyle = "#6e4a28";
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x - 2, GROUND);
-    ctx.lineTo(x - 2, GROUND - 2.6);
-    ctx.arc(x, GROUND - 2.6, 2, Math.PI, 0);
-    ctx.lineTo(x + 2, GROUND);
+    ctx.moveTo(x - 2.3, G);
+    ctx.lineTo(x - 2.3, G - 2.8);
+    ctx.arc(x, G - 2.8, 2.3, Math.PI, 0);
+    ctx.lineTo(x + 2.3, G);
     ctx.closePath();
-    ctx.fill();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(20,12,5,0.5)";
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    for (const dx of [-1.2, 0, 1.2]) {
+      ctx.moveTo(x + dx, G);
+      ctx.lineTo(x + dx, G - (dx === 0 ? 5 : 4.2));
+    }
+    ctx.stroke();
     // banner on the keep
     ctx.strokeStyle = "#3a2f22";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x, GROUND - 16.4);
-    ctx.lineTo(x, GROUND - 20.4);
+    ctx.moveTo(x, G - 16.4);
+    ctx.lineTo(x, G - 20.6);
     ctx.stroke();
     ctx.fillStyle = "#d9a13f";
     ctx.beginPath();
-    ctx.moveTo(x, GROUND - 20.4);
-    ctx.lineTo(x + 4, GROUND - 19.1);
-    ctx.lineTo(x, GROUND - 17.8);
+    ctx.moveTo(x, G - 20.6);
+    ctx.lineTo(x + 4.2, G - 19.3);
+    ctx.lineTo(x, G - 18);
     ctx.closePath();
     ctx.fill();
   }
