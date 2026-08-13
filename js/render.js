@@ -584,33 +584,148 @@ function createRenderer(canvas) {
     }
   }
 
+  // Four figures: pitchfork peasant, spearman with shield, armoured knight,
+  // crowned baron with greatsword and cape. Exhausted units go grey; a tower
+  // boost shows as a gold ground ring plus a +1 badge.
   function drawUnit(x, y, unit, isHumanTurnUnit, boosted) {
     const exhausted = isHumanTurnUnit && unit.moved;
-    const radius = 8 + unit.level * 1.2;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = exhausted ? "#a7a7a7" : "#f3f3f3";
-    ctx.fill();
-    ctx.strokeStyle = boosted ? "#e0a92c" : "#1f2530";
-    ctx.lineWidth = boosted ? 2.4 : 1.8;
-    ctx.stroke();
-    ctx.fillStyle = "#1f2530";
-    ctx.font = `bold ${9 + unit.level}px system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(unit.level), x, y + 0.5);
+    const G = y + 7;
+    const pal = exhausted ? {
+      outline: "#565b64", skin: "#b6b6b6", cloth: "#9c9c9c", pants: "#8b8b8b",
+      metal: "#a9a9a9", metalDark: "#8f8f8f", wood: "#9a9a9a",
+      straw: "#b0b0a4", shield: "#9c9c9c", accent: "#a5a5a5", gold: "#b0ab98",
+    } : {
+      outline: "#1f2530", skin: "#e9c39b", cloth: "#8a6b43", pants: "#6b5436",
+      metal: "#aab2bf", metalDark: "#7a828f", wood: "#7a5230",
+      straw: "#d9b95c", shield: "#a8703d", accent: "#b04a3a", gold: "#e0b23c",
+    };
+
     if (boosted) {
-      // "+1" badge at the top-right of the unit
-      const bx = x + radius * 0.85, by = y - radius * 0.85;
+      ctx.strokeStyle = "#e0a92c";
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(bx, by, 5.2, 0, Math.PI * 2);
+      ctx.ellipse(x, G + 0.8, 8.2, 3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.lineWidth = 1.1;
+    const O = pal.outline;
+    const rect = (rx, ry, w, h, fill) => {
+      ctx.fillStyle = fill; ctx.strokeStyle = O;
+      ctx.beginPath(); ctx.rect(rx, ry, w, h); ctx.fill(); ctx.stroke();
+    };
+    const circle = (cx, cy, r, fill) => {
+      ctx.fillStyle = fill; ctx.strokeStyle = O;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    };
+    const line = (x1, y1, x2, y2, color, w) => {
+      ctx.strokeStyle = color; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.lineWidth = 1.1;
+    };
+
+    if (unit.level === 1) {
+      // Peasant: straw hat, tunic, pitchfork.
+      line(x + 2.6, G, x + 4.6, G - 10, pal.wood, 1.5);
+      for (const dx of [-1.4, 0, 1.4]) {
+        line(x + 4.6 + dx * 0.5, G - 10, x + 4.6 + dx * 0.6, G - 12.4, pal.metal, 1.1);
+      }
+      rect(x - 2, G - 3, 4, 3, pal.pants);
+      rect(x - 2.5, G - 7.2, 5, 4.4, pal.cloth);
+      circle(x, G - 8.9, 2.2, pal.skin);
+      ctx.fillStyle = pal.straw; ctx.strokeStyle = O;
+      ctx.beginPath();
+      ctx.ellipse(x, G - 10, 3.6, 1.2, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      circle(x, G - 11, 1.4, pal.straw);
+    } else if (unit.level === 2) {
+      // Spearman: capped helmet, spear, round shield.
+      line(x + 3.6, G, x + 3.6, G - 12, pal.wood, 1.5);
+      ctx.fillStyle = pal.metal; ctx.strokeStyle = O;
+      ctx.beginPath();
+      ctx.moveTo(x + 2.6, G - 12);
+      ctx.lineTo(x + 3.6, G - 15);
+      ctx.lineTo(x + 4.6, G - 12);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      rect(x - 2.2, G - 3.2, 4.4, 3.2, pal.pants);
+      rect(x - 2.7, G - 7.6, 5.4, 4.6, pal.metalDark);
+      circle(x, G - 9.3, 2.2, pal.skin);
+      ctx.fillStyle = pal.metal; ctx.strokeStyle = O; // helmet cap
+      ctx.beginPath();
+      ctx.arc(x, G - 9.7, 2.4, Math.PI, 0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      circle(x - 4, G - 5, 2.9, pal.shield);
+      circle(x - 4, G - 5, 0.9, pal.metal);
+    } else if (unit.level === 3) {
+      // Knight: great helm with plume, plate armour, kite shield, sword.
+      line(x + 4.2, G - 1, x + 4.2, G - 11, pal.metal, 1.6);
+      line(x + 2.6, G - 8.2, x + 5.8, G - 8.2, pal.wood, 1.4);
+      rect(x - 2.6, G - 3.4, 5.2, 3.4, pal.metalDark);
+      rect(x - 3, G - 8.2, 6, 4.8, pal.metal);
+      circle(x - 3, G - 8, 1.5, pal.metalDark); // pauldron
+      circle(x + 3, G - 8, 1.5, pal.metalDark);
+      // great helm
+      rect(x - 2.1, G - 12.6, 4.2, 4.4, pal.metal);
+      line(x - 1.4, G - 10.6, x + 1.4, G - 10.6, pal.outline, 0.9);
+      ctx.fillStyle = pal.accent; ctx.strokeStyle = O; // plume
+      ctx.beginPath();
+      ctx.moveTo(x - 1.8, G - 12.6);
+      ctx.quadraticCurveTo(x, G - 15.6, x + 1.8, G - 12.6);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // kite shield
+      ctx.fillStyle = pal.accent; ctx.strokeStyle = O;
+      ctx.beginPath();
+      ctx.moveTo(x - 4.2, G - 8);
+      ctx.quadraticCurveTo(x - 6.4, G - 6, x - 4.2, G - 1.2);
+      ctx.quadraticCurveTo(x - 2, G - 6, x - 4.2, G - 8);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      line(x - 4.2, G - 7.2, x - 4.2, G - 2.4, "#e8dcc0", 0.9);
+    } else {
+      // Baron: cape, crowned helm, gold-trimmed armour, greatsword.
+      ctx.fillStyle = exhausted ? "#8f8f8f" : "#7e2f2a"; // cape behind
+      ctx.strokeStyle = O;
+      ctx.beginPath();
+      ctx.moveTo(x - 2.6, G - 9);
+      ctx.lineTo(x - 5, G);
+      ctx.lineTo(x + 5, G);
+      ctx.lineTo(x + 2.6, G - 9);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      line(x + 5, G - 0.6, x + 5, G - 12.6, pal.metal, 1.8);
+      line(x + 3.2, G - 9.4, x + 6.8, G - 9.4, pal.gold, 1.5);
+      rect(x - 2.8, G - 3.6, 5.6, 3.6, pal.metalDark);
+      rect(x - 3.3, G - 8.8, 6.6, 5.2, pal.metal);
+      line(x - 3.3, G - 4.4, x + 3.3, G - 4.4, pal.gold, 1.2); // belt
+      circle(x - 3.4, G - 8.6, 1.7, pal.metalDark);
+      circle(x + 3.4, G - 8.6, 1.7, pal.metalDark);
+      // helm with crown
+      rect(x - 2.2, G - 13.2, 4.4, 4.6, pal.metal);
+      line(x - 1.5, G - 11, x + 1.5, G - 11, pal.outline, 0.9);
+      ctx.fillStyle = pal.gold; ctx.strokeStyle = O; ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(x - 2.2, G - 13.0);
+      ctx.lineTo(x - 2.2, G - 14.6);
+      ctx.lineTo(x - 1.1, G - 13.5);
+      ctx.lineTo(x, G - 15.2);
+      ctx.lineTo(x + 1.1, G - 13.5);
+      ctx.lineTo(x + 2.2, G - 14.6);
+      ctx.lineTo(x + 2.2, G - 13.0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1.1;
+    }
+
+    if (boosted) {
+      const bx = x + 7, by = G - 12;
+      ctx.beginPath();
+      ctx.arc(bx, by, 4.6, 0, Math.PI * 2);
       ctx.fillStyle = "#e0a92c";
       ctx.fill();
       ctx.strokeStyle = "#7a5b12";
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.fillStyle = "#1f2530";
-      ctx.font = "bold 7px system-ui, sans-serif";
+      ctx.font = "bold 6.5px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText("+1", bx, by + 0.5);
     }
   }
