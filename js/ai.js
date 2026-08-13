@@ -204,6 +204,18 @@ function tryMerge(state, player, province, diff, style) {
 }
 
 function spendMoney(state, player, province, diff, style) {
+  // Emergency downsizing: if the next income phase would bankrupt the
+  // province (killing every unit), sell the cheapest units until it balances.
+  for (let guard = 0; guard < 10; guard++) {
+    const net = provinceIncome(state, province) - provinceUpkeep(state, province);
+    if (province.money + net >= 0) break;
+    const units = province.tiles
+      .filter(k => state.tiles.get(k).unit)
+      .sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
+    if (units.length === 0) break;
+    if (!sellAsset(state, province.capitalKey, units[0]).ok) break;
+  }
+
   // Farm first: compounding income wins long games. Build new farms while
   // there is room; once there isn't, upgrade existing ones.
   if (Math.random() < style.farmChance) {

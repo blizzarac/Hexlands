@@ -551,6 +551,51 @@ function buyFarm(state, provinceCapital, targetKey) {
 }
 
 // ---------------------------------------------------------------------------
+// Selling
+
+const SELL_RATIO = 0.75;
+
+// Nominal invested cost of whatever sits on the tile (unit or building).
+// Farm build prices vary with farm count at purchase time; we use the base
+// price, which keeps sell-and-rebuild strictly unprofitable.
+function assetValue(tile) {
+  if (tile.unit) return UNIT_COST * tile.unit.level;
+  if (tile.structure === "tower") {
+    let total = TOWER_COST;
+    for (let l = 2; l <= (tile.structureLevel || 1); l++) total += TOWER_UPGRADE_COSTS[l];
+    return total;
+  }
+  if (tile.structure === "farm") {
+    let total = FARM_BASE_COST;
+    for (let l = 2; l <= (tile.structureLevel || 1); l++) total += FARM_UPGRADE_COSTS[l];
+    return total;
+  }
+  return 0; // capitals and empty tiles are not sellable
+}
+
+function sellPrice(tile) {
+  return Math.floor(assetValue(tile) * SELL_RATIO);
+}
+
+function sellAsset(state, provinceCapital, targetKey) {
+  const province = state.provinces.find(
+    p => p.capitalKey === provinceCapital && p.owner === state.currentPlayer);
+  if (!province) return { ok: false, reason: "No such province" };
+  if (!province.tiles.includes(targetKey)) return { ok: false, reason: "Not in this province" };
+  const t = state.tiles.get(targetKey);
+  const price = sellPrice(t);
+  if (price <= 0) return { ok: false, reason: "Nothing sellable there" };
+  if (t.unit) {
+    t.unit = null;
+  } else {
+    t.structure = null;
+    t.structureLevel = null;
+  }
+  province.money += price;
+  return { ok: true, price };
+}
+
+// ---------------------------------------------------------------------------
 // Snapshots (used for undo)
 
 function snapshotState(state) {

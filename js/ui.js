@@ -5,7 +5,7 @@ function createUI(canvas, renderer, callbacks) {
   const ui = {
     selectedProvinceKey: null, // any tile key inside the selected province
     selectedUnitKey: null,
-    placing: null,             // 'unit' | 'tower' | 'farm'
+    placing: null,             // 'unit' | 'tower' | 'farm' | 'sell'
     highlights: new Map(),     // tile key -> 'move' | 'capture' | 'build'
   };
 
@@ -128,6 +128,10 @@ function createUI(canvas, renderer, callbacks) {
       for (const k of borderTargets(state, province)) {
         if (canCapture(state, 1, k, state.currentPlayer)) ui.highlights.set(k, "capture");
       }
+    } else if (kind === "sell") {
+      for (const k of province.tiles) {
+        if (sellPrice(state.tiles.get(k)) > 0) ui.highlights.set(k, "sell");
+      }
     } else if (kind === "farm") {
       for (const k of province.tiles) {
         const t = state.tiles.get(k);
@@ -222,13 +226,15 @@ function updateHUD(state, ui, undoAvailable) {
   btn("btn-unit").disabled = !canAct || own.money < UNIT_COST;
   btn("btn-tower").disabled = !canAct || own.money < cheapestTowerAction;
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
+  btn("btn-sell").disabled = !canAct ||
+    !own.tiles.some(k => sellPrice(state.tiles.get(k)) > 0);
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;
   document.getElementById("farm-cost").textContent =
     own ? `⬡${farmCost(state, own)}` : "⬡12";
 
   for (const [id, kind] of [["btn-unit", "unit"], ["btn-tower", "tower"],
-    ["btn-farm", "farm"]]) {
+    ["btn-farm", "farm"], ["btn-sell", "sell"]]) {
     btn(id).classList.toggle("armed", ui.placing === kind);
   }
 }

@@ -151,6 +151,11 @@ function createRenderer(canvas) {
           ctx.strokeStyle = "rgba(255,210,74,0.95)";
           ctx.lineWidth = 2.5;
           ctx.stroke();
+        } else if (kind === "sell") {
+          hexPath(x, y, 0.8);
+          ctx.strokeStyle = "rgba(240,140,60,0.95)";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
         } else {
           ctx.beginPath();
           ctx.arc(x, y, 5.5, 0, Math.PI * 2);

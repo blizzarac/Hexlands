@@ -55,6 +55,10 @@ You are **blue**. Destroy every enemy province to win.
 - **Upgrades**: with the Tower or Farm button armed, click an existing
   building (gold outline) to upgrade it. Farms level up to 3 (+4 income per
   level, +6 on meadows, costing 20 then 30).
+- **Selling**: the Sell button sells a unit, tower or farm for 75% of its
+  invested cost (orange outline marks sellable assets). Capitals cannot be
+  sold. The AI also downsizes its army rather than letting a province go
+  bankrupt.
 - **Merging**: move a unit onto a friendly unit to combine their levels
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree

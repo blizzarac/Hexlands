@@ -51,12 +51,19 @@
       if (province && ui.highlights.has(key)) {
         const capital = province.capitalKey;
         const kind = ui.placing;
+        let soldFor = 0;
         const ok = attempt(() => {
           if (kind === "unit") return buyUnit(state, capital, key);
           if (kind === "farm") return buyFarm(state, capital, key);
+          if (kind === "sell") {
+            const result = sellAsset(state, capital, key);
+            if (result.ok) soldFor = result.price;
+            return result;
+          }
           return buyTower(state, capital, key);
         });
         if (ok) {
+          if (soldFor > 0) showToast(`Sold for ⬡${soldFor}`);
           ui.placing = null;
           ui.highlights = new Map();
           // keep the province selected (its tile set may have grown)
@@ -187,6 +194,7 @@
   document.getElementById("btn-unit").addEventListener("click", () => armPlacement("unit"));
   document.getElementById("btn-tower").addEventListener("click", () => armPlacement("tower"));
   document.getElementById("btn-farm").addEventListener("click", () => armPlacement("farm"));
+  document.getElementById("btn-sell").addEventListener("click", () => armPlacement("sell"));
   document.getElementById("btn-end").addEventListener("click", onEndTurn);
   document.getElementById("btn-undo").addEventListener("click", onUndo);
 
