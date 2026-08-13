@@ -269,22 +269,64 @@ function createRenderer(canvas) {
     ctx.stroke();
   }
 
-  function drawTower(x, y, strong) {
-    ctx.fillStyle = strong ? "#4a4f5a" : "#6b7280";
-    ctx.strokeStyle = "#22252b";
-    ctx.lineWidth = 1.5;
-    const w = strong ? 8 : 6.5, h = strong ? 13 : 10;
-    ctx.beginPath();
-    ctx.rect(x - w, y - h / 2, w * 2, h);
-    ctx.fill(); ctx.stroke();
-    // battlements
-    ctx.beginPath();
-    for (let i = -1; i <= 1; i++) ctx.rect(x + i * (w * 0.8) - 1.6, y - h / 2 - 3.5, 3.2, 3.5);
-    ctx.fill(); ctx.stroke();
-    if (strong) {
-      ctx.fillStyle = "#9aa2b0";
-      ctx.fillRect(x - 2, y - 2, 4, h / 2 + 2);
+  // Level 1 is a lone watchtower; level 2 is a full fort with keep, curtain
+  // wall, gate and flanking towers.
+  function drawTower(x, y, fort) {
+    const GROUND = y + 7.5;
+    const stroke = "#22252b";
+
+    // One crenellated block; (bx, GROUND) is the bottom-centre.
+    const block = (bx, w, h, fill) => {
+      ctx.lineWidth = 1.2;
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.beginPath();
+      ctx.rect(bx - w / 2, GROUND - h, w, h);
+      ctx.fill(); ctx.stroke();
+      const n = Math.max(2, Math.round(w / 3.2));
+      const step = w / n;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        ctx.rect(bx - w / 2 + i * step + step * 0.18, GROUND - h - 2.4, step * 0.5, 2.4);
+      }
+      ctx.fill(); ctx.stroke();
+    };
+
+    if (!fort) {
+      block(x, 8, 12, "#6b7280");
+      ctx.fillStyle = "#2c313b"; // arrow slit
+      ctx.fillRect(x - 0.9, GROUND - 9.5, 1.8, 4);
+      return;
     }
+
+    // Fort: tall keep behind, curtain wall with gate in front, side towers.
+    block(x, 7.5, 14, "#59616e");            // keep
+    block(x, 13, 6.5, "#6b7280");            // curtain wall
+    block(x - 8, 5.5, 10, "#6b7280");        // left tower
+    block(x + 8, 5.5, 10, "#6b7280");        // right tower
+    // gate arch
+    ctx.fillStyle = "#3a2f22";
+    ctx.beginPath();
+    ctx.moveTo(x - 2, GROUND);
+    ctx.lineTo(x - 2, GROUND - 2.6);
+    ctx.arc(x, GROUND - 2.6, 2, Math.PI, 0);
+    ctx.lineTo(x + 2, GROUND);
+    ctx.closePath();
+    ctx.fill();
+    // banner on the keep
+    ctx.strokeStyle = "#3a2f22";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND - 16.4);
+    ctx.lineTo(x, GROUND - 20.4);
+    ctx.stroke();
+    ctx.fillStyle = "#d9a13f";
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND - 20.4);
+    ctx.lineTo(x + 4, GROUND - 19.1);
+    ctx.lineTo(x, GROUND - 17.8);
+    ctx.closePath();
+    ctx.fill();
   }
 
   // Farms grow with their level: cottage -> farmhouse with barn -> villa.
