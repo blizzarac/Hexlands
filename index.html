@@ -23,7 +23,7 @@
       </div>
       <div id="actions">
         <button id="btn-unit"  title="Buy a peasant (level 1). Drop it on an existing unit to upgrade it.">Unit ⬡10</button>
-        <button id="btn-tower" title="Tower: defends its tile and neighbours at level 2.">Tower ⬡15</button>
+        <button id="btn-tower" title="Tower: defends its tile and neighbours at level 2, and friendly units standing next to it fight at +1 level.">Tower ⬡15</button>
         <button id="btn-stower" title="Fort: defends at level 3. Build on an empty tile (⬡35) or click one of your towers to upgrade it (⬡20).">Fort ⬡35</button>
         <button id="btn-farm"  title="Farm: +4 income, next to the capital or another farm. Click an existing farm to upgrade it (⬡20 then ⬡30, +4 income each).">Farm <span id="farm-cost">⬡12</span></button>
         <button id="btn-undo"  title="Undo your last action this turn.">Undo</button>
@@ -65,9 +65,10 @@
         <ul>
           <li>Click one of your provinces (your colour is <b class="you">blue</b>) to select it.</li>
           <li>Each tile earns 1 coin per round; farms add 4. Units cost upkeep every round — if a province goes broke, all its units die.</li>
-          <li>Click a unit, then a highlighted tile to move it. Units capture adjacent tiles that are defended at a lower level than their own.</li>
+          <li>Click a unit, then a highlighted tile to move it. Units capture adjacent tiles that are defended at a <i>strictly lower</i> level than their own — equal defence always blocks, even for level 4.</li>
           <li>Units, towers and capitals defend their tile <i>and</i> all neighbouring tiles.</li>
-          <li>Merge two units (move one onto the other) to make a stronger one. Level 4 beats everything.</li>
+          <li>Merge two units (move one onto the other) to make a stronger one.</li>
+          <li>Towers boost friendly units standing next to them by +1 level (gold ring and +1 badge). The boost applies where the unit stands — park a unit beside a tower and it attacks and defends one level stronger. A boosted level 4 is the only thing that can break a level-4 wall.</li>
           <li>Chopping a tree earns 3 coins. Trees spread and block income, so keep them in check.</li>
           <li>Farms and towers can be upgraded: with the Farm or Fort button armed, click the existing building (gold outline). Farms go to level 3 (+4 income each); a tower upgrades into a fort.</li>
           <li>Each AI has a playstyle, shown next to its name: ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands), 🛡️ Turtle (fortifies), ⚖️ Balanced.</li>

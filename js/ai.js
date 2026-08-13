@@ -145,9 +145,9 @@ function attackOnce(state, player, province, diff, style) {
   const targets = borderTargets(state, province);
   let best = null;
   for (const targetKey of targets) {
-    // Prefer the weakest unit that can take the tile.
+    // Prefer the weakest unit that can take the tile (aura counts).
     const capable = units
-      .filter(uk => canCapture(state, state.tiles.get(uk).unit.level, targetKey, player))
+      .filter(uk => canCapture(state, effectiveUnitLevel(state, uk), targetKey, player))
       .sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
     if (capable.length === 0) continue;
     const value = targetValue(state, targetKey, player, diff, style);
@@ -166,7 +166,7 @@ function tryMerge(state, player, province, diff, style) {
 
   const targets = borderTargets(state, province);
   const maxDefense = Math.max(0, ...targets.map(k => tileDefense(state, k)));
-  const maxLevel = Math.max(...idle.map(k => state.tiles.get(k).unit.level));
+  const maxLevel = Math.max(...idle.map(k => effectiveUnitLevel(state, k)));
   if (maxLevel > maxDefense) return; // a single unit could already do the job
 
   idle.sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);

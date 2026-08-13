@@ -92,6 +92,7 @@ function createUI(canvas, renderer, callbacks) {
     const from = state.tiles.get(fromKey);
     if (!province || !from || !from.unit) return;
     const level = from.unit.level;
+    const effLevel = effectiveUnitLevel(state, fromKey);
     for (const k of province.tiles) {
       if (k === fromKey) continue;
       const t = state.tiles.get(k);
@@ -100,7 +101,7 @@ function createUI(canvas, renderer, callbacks) {
       ui.highlights.set(k, "move");
     }
     for (const k of borderTargets(state, province)) {
-      if (canCapture(state, level, k, state.currentPlayer)) ui.highlights.set(k, "capture");
+      if (canCapture(state, effLevel, k, state.currentPlayer)) ui.highlights.set(k, "capture");
     }
   };
 

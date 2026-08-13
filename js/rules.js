@@ -198,28 +198,52 @@ function farmCost(state, p) {
 // ---------------------------------------------------------------------------
 // Combat
 
+// A friendly tower or fort boosts units standing on any of its six
+// neighbouring tiles by +1 effective level (positional: the boost applies
+// wherever the unit currently stands, for both defence and attacks launched
+// from there).
+const TOWER_AURA_BONUS = 1;
+
+function hasTowerAura(state, key, owner) {
+  return neighborKeys(key).some(nk => {
+    const nt = state.tiles.get(nk);
+    return nt && nt.owner === owner && nt.structure === "tower";
+  });
+}
+
+function effectiveUnitLevel(state, key) {
+  const t = state.tiles.get(key);
+  if (!t || !t.unit) return 0;
+  return t.unit.level + (hasTowerAura(state, key, t.owner) ? TOWER_AURA_BONUS : 0);
+}
+
 // Defence of a tile = highest level among defenders on it and its neighbours
-// that share the tile's owner. Neutral land is undefended.
+// that share the tile's owner: structures (capital 1, tower 2, fort 3) and
+// units at their effective (aura-boosted) level. Neutral land is undefended.
 function tileDefense(state, key) {
   const t = state.tiles.get(key);
   if (!t || t.owner < 0) return 0;
   let d = 0;
-  const consider = tt => {
+  const considerKey = k => {
+    const tt = state.tiles.get(k);
     if (!tt || tt.owner !== t.owner) return;
-    if (tt.unit) d = Math.max(d, tt.unit.level);
+    if (tt.unit) d = Math.max(d, effectiveUnitLevel(state, k));
     if (tt.structure === "capital") d = Math.max(d, 1);
     if (tt.structure === "tower") d = Math.max(d, 1 + (tt.structureLevel || 1));
   };
-  consider(t);
-  for (const nk of neighborKeys(key)) consider(state.tiles.get(nk));
+  considerKey(key);
+  for (const nk of neighborKeys(key)) considerKey(nk);
   return d;
 }
 
+// Capture needs a strictly higher effective level than the defence. There is
+// no level-4 override: equal-or-higher defence always blocks, so tiles in a
+// structure's zone can only be taken by outleveling it — and only a
+// tower-boosted level 4 (effective 5) can break a plain level-4 wall.
 function canCapture(state, level, targetKey, attacker) {
   const t = state.tiles.get(targetKey);
   if (!t || t.owner === attacker) return false;
-  const d = tileDefense(state, targetKey);
-  return level > d || level >= MAX_UNIT_LEVEL;
+  return level > tileDefense(state, targetKey);
 }
 
 function isAdjacentToProvince(state, province, key) {
@@ -321,7 +345,7 @@ function moveUnit(state, fromKey, toKey) {
   if (!isAdjacentToProvince(state, province, toKey)) {
     return { ok: false, reason: "Tile is out of reach" };
   }
-  if (!canCapture(state, from.unit.level, toKey, state.currentPlayer)) {
+  if (!canCapture(state, effectiveUnitLevel(state, fromKey), toKey, state.currentPlayer)) {
     return { ok: false, reason: "Tile is too well defended" };
   }
 

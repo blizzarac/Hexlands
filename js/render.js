@@ -83,6 +83,18 @@ function createRenderer(canvas) {
       ctx.stroke();
     }
 
+    // Tower aura glow inside the selected province: shows where units gain +1
+    if (selectedProvince) {
+      ctx.fillStyle = "rgba(255,210,74,0.16)";
+      for (const k of selectedProvince.tiles) {
+        if (!hasTowerAura(state, k, selectedProvince.owner)) continue;
+        const { q, r } = parseKey(k);
+        const { x, y } = hexToPixel(q, r, HEX_SIZE);
+        hexPath(x, y, 0.72);
+        ctx.fill();
+      }
+    }
+
     // Selected-province outline
     if (selectedProvince) {
       ctx.strokeStyle = "rgba(255,255,255,0.95)";
@@ -132,14 +144,18 @@ function createRenderer(canvas) {
     }
 
     // Objects
-    for (const t of state.tiles.values()) {
+    for (const [k, t] of state.tiles) {
       const { x, y } = hexToPixel(t.q, t.r, HEX_SIZE);
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
       if (t.structure === "capital") drawCapital(x, y);
       if (t.structure === "tower") drawTower(x, y, (t.structureLevel || 1) >= 2);
       if (t.structure === "farm") drawFarm(x, y, t.structureLevel || 1);
-      if (t.unit) drawUnit(x, y, t.unit, t.owner === state.currentPlayer && !state.players[t.owner].isAI);
+      if (t.unit) {
+        drawUnit(x, y, t.unit,
+          t.owner === state.currentPlayer && !state.players[t.owner].isAI,
+          hasTowerAura(state, k, t.owner));
+      }
     }
 
     // Selected unit marker
@@ -248,21 +264,35 @@ function createRenderer(canvas) {
     }
   }
 
-  function drawUnit(x, y, unit, isHumanTurnUnit) {
+  function drawUnit(x, y, unit, isHumanTurnUnit, boosted) {
     const exhausted = isHumanTurnUnit && unit.moved;
     const radius = 8 + unit.level * 1.2;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fillStyle = exhausted ? "#a7a7a7" : "#f3f3f3";
     ctx.fill();
-    ctx.strokeStyle = "#1f2530";
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = boosted ? "#e0a92c" : "#1f2530";
+    ctx.lineWidth = boosted ? 2.4 : 1.8;
     ctx.stroke();
     ctx.fillStyle = "#1f2530";
     ctx.font = `bold ${9 + unit.level}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(unit.level), x, y + 0.5);
+    if (boosted) {
+      // "+1" badge at the top-right of the unit
+      const bx = x + radius * 0.85, by = y - radius * 0.85;
+      ctx.beginPath();
+      ctx.arc(bx, by, 5.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#e0a92c";
+      ctx.fill();
+      ctx.strokeStyle = "#7a5b12";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = "#1f2530";
+      ctx.font = "bold 7px system-ui, sans-serif";
+      ctx.fillText("+1", bx, by + 0.5);
+    }
   }
 
   return { camera, resize, fitToMap, draw, screenToTileKey, screenToWorld };

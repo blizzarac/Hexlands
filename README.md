@@ -22,9 +22,17 @@ You are **blue**. Destroy every enemy province to win.
   trees or gravestones earn nothing.
 - **Units** (levels 1–4) cost 10 coins and upkeep of 2 / 6 / 18 / 36 per round.
   If a province's treasury goes negative, all of its units starve.
-- **Combat**: a unit captures an adjacent tile if its level is higher than the
-  tile's defence. Units, towers (def 2), forts (def 3) and capitals (def 1)
-  defend their own tile *and* all six neighbours. Level 4 beats everything.
+- **Combat**: a unit captures an adjacent tile only if its effective level is
+  *strictly higher* than the tile's defence — equal defence always blocks,
+  even for level 4. Units, towers (def 2), forts (def 3) and capitals (def 1)
+  defend their own tile *and* all six neighbours.
+- **Tower aura**: friendly units standing next to a tower or fort fight at
+  +1 effective level (shown as a gold ring and +1 badge). The boost is
+  positional — it applies to attacks launched from that spot and to defence
+  while standing there. Selecting a province shows its aura tiles in gold.
+  A tower-boosted level 4 (effective 5) is the only way to break a level-4
+  defensive wall by force; the alternatives are splitting the province or
+  starving its treasury.
 - **Upgrades**: with the Farm or Fort button armed, click an existing building
   (gold outline) to upgrade it. Farms level up to 3 (+4 income per level,
   costing 20 then 30); a tower upgrades into a fort for 20.
