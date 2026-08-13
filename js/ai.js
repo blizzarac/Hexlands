@@ -143,16 +143,30 @@ function attackOnce(state, player, province, diff, style) {
   });
   if (units.length === 0) return false;
 
-  const targets = borderTargets(state, province);
+  // Each unit can only strike targets within its movement range.
   let best = null;
-  for (const targetKey of targets) {
-    // Prefer the weakest unit that can take the tile (aura counts).
-    const capable = units
-      .filter(uk => canCapture(state, effectiveUnitLevel(state, uk), targetKey, player))
-      .sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
-    if (capable.length === 0) continue;
-    const value = targetValue(state, targetKey, player, diff, style);
-    if (!best || value > best.value) best = { from: capable[0], to: targetKey, value };
+  for (const uk of units) {
+    const unit = state.tiles.get(uk).unit;
+    const range = moveRange(unit);
+    const dist = reachableWithin(state, uk, range);
+    const eff = effectiveUnitLevel(state, uk);
+    const seen = new Set();
+    for (const [k, d] of dist) {
+      if (d > range - 1) continue;
+      for (const nk of neighborKeys(k)) {
+        if (seen.has(nk)) continue;
+        seen.add(nk);
+        const t = state.tiles.get(nk);
+        if (!t || t.owner === player) continue;
+        if (!canCapture(state, eff, nk, player)) continue;
+        const value = targetValue(state, nk, player, diff, style);
+        // Prefer higher value; tiebreak toward the weaker unit.
+        if (!best || value > best.value ||
+            (value === best.value && unit.level < state.tiles.get(best.from).unit.level)) {
+          best = { from: uk, to: nk, value };
+        }
+      }
+    }
   }
   if (!best) return false;
   return moveUnit(state, best.from, best.to).ok;
@@ -170,15 +184,23 @@ function tryMerge(state, player, province, diff, style) {
   const maxLevel = Math.max(...idle.map(k => effectiveUnitLevel(state, k)));
   if (maxLevel > maxDefense) return; // a single unit could already do the job
 
+  // Find a pair the mover can actually walk to.
   idle.sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
-  const a = idle[0], b = idle[1];
-  const combined = state.tiles.get(a).unit.level + state.tiles.get(b).unit.level;
-  if (combined > MAX_UNIT_LEVEL || combined <= maxDefense) return;
-  // Only merge if the province can afford the heavier upkeep.
-  const extraUpkeep = UNIT_UPKEEP[combined] -
-    UNIT_UPKEEP[state.tiles.get(a).unit.level] - UNIT_UPKEEP[state.tiles.get(b).unit.level];
-  if (provinceIncome(state, province) - provinceUpkeep(state, province) - extraUpkeep < 0) return;
-  if (moveUnit(state, a, b).ok) attackOnce(state, player, province, diff, style);
+  for (const a of idle) {
+    const ua = state.tiles.get(a).unit;
+    const dist = reachableWithin(state, a, moveRange(ua));
+    for (const b of idle) {
+      if (b === a || !dist.has(b)) continue;
+      const combined = ua.level + state.tiles.get(b).unit.level;
+      if (combined > MAX_UNIT_LEVEL || combined <= maxDefense) continue;
+      // Only merge if the province can afford the heavier upkeep.
+      const extraUpkeep = UNIT_UPKEEP[combined] -
+        UNIT_UPKEEP[ua.level] - UNIT_UPKEEP[state.tiles.get(b).unit.level];
+      if (provinceIncome(state, province) - provinceUpkeep(state, province) - extraUpkeep < 0) continue;
+      if (moveUnit(state, a, b).ok) attackOnce(state, player, province, diff, style);
+      return;
+    }
+  }
 }
 
 function spendMoney(state, player, province, diff, style) {
@@ -260,16 +282,40 @@ function repositionIdleUnits(state, player, province) {
     const t = state.tiles.get(k);
     return t.unit && !t.unit.moved;
   });
+  if (idle.length === 0) return;
+
+  // Distance-to-border map so interior units can march outward over turns.
+  const isBorder = k => neighborKeys(k).some(nk => {
+    const nt = state.tiles.get(nk);
+    return nt && nt.owner !== player;
+  });
+  const borderDist = new Map();
+  const queue = [];
+  for (const k of province.tiles) {
+    if (isBorder(k)) { borderDist.set(k, 0); queue.push(k); }
+  }
+  while (queue.length) {
+    const k = queue.shift();
+    const d = borderDist.get(k);
+    for (const nk of neighborKeys(k)) {
+      if (borderDist.has(nk) || !province.tiles.includes(nk)) continue;
+      borderDist.set(nk, d + 1);
+      queue.push(nk);
+    }
+  }
+
   for (const uk of idle) {
-    const isBorder = k => neighborKeys(k).some(nk => {
-      const nt = state.tiles.get(nk);
-      return nt && nt.owner !== player;
-    });
-    if (isBorder(uk)) continue; // already useful where it is
-    const spot = province.tiles.find(k => {
+    const here = borderDist.get(uk) ?? Infinity;
+    if (here === 0) continue; // already on the border
+    const unit = state.tiles.get(uk).unit;
+    const dist = reachableWithin(state, uk, moveRange(unit));
+    let spot = null, bestD = here;
+    for (const k of dist.keys()) {
       const t = state.tiles.get(k);
-      return !t.unit && !t.structure && !t.tree && !t.grave && isBorder(k);
-    });
+      if (t.unit || t.structure || t.tree || t.grave) continue;
+      const d = borderDist.get(k) ?? Infinity;
+      if (d < bestD) { bestD = d; spot = k; }
+    }
     if (spot) moveUnit(state, uk, spot);
   }
 }

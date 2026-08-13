@@ -27,6 +27,11 @@ You are **blue**. Destroy every enemy province to win.
   Tiles covered by trees or gravestones earn nothing.
 - **Units** (levels 1–4) cost 10 coins and upkeep of 2 / 6 / 18 / 36 per round.
   If a province's treasury goes negative, all of its units starve.
+- **Movement**: a unit moves up to its level in tiles per turn (peasant 1,
+  spearman 2, knight 3, baron 4), walking through friendly territory only;
+  a capture spends the final step. Occupied tiles can be passed through but
+  not landed on. Freshly bought units may be placed anywhere in the
+  province (or capture a tile adjacent to it).
 - **Combat**: a unit captures an adjacent tile only if its effective level is
   *strictly higher* than the tile's defence — equal defence always blocks,
   even for level 4. Units, towers (def 2), forts (def 3) and capitals (def 1)
@@ -78,8 +83,6 @@ the UI use the exact same API, so new mechanics added there work for both.
 
 ### Deliberate simplifications vs. Antiyoy
 
-- Units may reposition anywhere inside their own province in a single move
-  (Antiyoy limits movement to 4 tiles).
 - Only level-1 units can be bought; higher tiers come from merging.
 - Diplomacy, colour-blind mode, map editor, and multiplayer are not implemented.
 

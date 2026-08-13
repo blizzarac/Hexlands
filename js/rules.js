@@ -261,6 +261,43 @@ function canCapture(state, level, targetKey, attacker) {
   return level > tileDefense(state, targetKey);
 }
 
+// ---------------------------------------------------------------------------
+// Movement
+
+// A unit moves up to its level in steps per turn (peasant 1 ... baron 4),
+// walking through friendly territory only. Occupied tiles can be passed
+// through; only the landing tile is restricted.
+function moveRange(unit) { return unit.level; }
+
+// Breadth-first distances from a tile through same-owner territory, capped at
+// `range` steps. Adjacent same-owner tiles are by definition one province, so
+// an owner check is all the connectivity we need.
+function reachableWithin(state, fromKey, range) {
+  const owner = state.tiles.get(fromKey).owner;
+  const dist = new Map([[fromKey, 0]]);
+  const queue = [fromKey];
+  while (queue.length) {
+    const k = queue.shift();
+    const d = dist.get(k);
+    if (d >= range) continue;
+    for (const nk of neighborKeys(k)) {
+      if (dist.has(nk)) continue;
+      const t = state.tiles.get(nk);
+      if (!t || t.owner !== owner) continue;
+      dist.set(nk, d + 1);
+      queue.push(nk);
+    }
+  }
+  return dist;
+}
+
+// Capture targets spend the final step: the target must border a friendly
+// tile the unit can reach with one step to spare.
+function canReachTarget(state, dist, range, targetKey) {
+  return neighborKeys(targetKey).some(nk =>
+    dist.has(nk) && dist.get(nk) <= range - 1);
+}
+
 function isAdjacentToProvince(state, province, key) {
   return neighborKeys(key).some(nk => province.tiles.includes(nk));
 }
@@ -340,7 +377,13 @@ function moveUnit(state, fromKey, toKey) {
   const dest = state.tiles.get(toKey);
   if (!dest) return { ok: false, reason: "Not a valid tile" };
 
+  const range = moveRange(from.unit);
+  const dist = reachableWithin(state, fromKey, range);
+
   if (province.tiles.includes(toKey)) {
+    if (!dist.has(toKey)) {
+      return { ok: false, reason: `Out of range (this unit moves ${range})` };
+    }
     if (dest.unit) {
       const merged = dest.unit.level + from.unit.level;
       if (merged > MAX_UNIT_LEVEL) return { ok: false, reason: "Merged unit would exceed level 4" };
@@ -361,8 +404,8 @@ function moveUnit(state, fromKey, toKey) {
     return { ok: true };
   }
 
-  if (!isAdjacentToProvince(state, province, toKey)) {
-    return { ok: false, reason: "Tile is out of reach" };
+  if (!canReachTarget(state, dist, range, toKey)) {
+    return { ok: false, reason: `Out of range (this unit moves ${range})` };
   }
   if (!canCapture(state, effectiveUnitLevel(state, fromKey), toKey, state.currentPlayer)) {
     return { ok: false, reason: "Tile is too well defended" };

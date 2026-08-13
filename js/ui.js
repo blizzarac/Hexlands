@@ -93,15 +93,24 @@ function createUI(canvas, renderer, callbacks) {
     if (!province || !from || !from.unit) return;
     const level = from.unit.level;
     const effLevel = effectiveUnitLevel(state, fromKey);
-    for (const k of province.tiles) {
+    const range = moveRange(from.unit);
+    const dist = reachableWithin(state, fromKey, range);
+    for (const k of dist.keys()) {
       if (k === fromKey) continue;
       const t = state.tiles.get(k);
       if (t.structure) continue;
       if (t.unit && t.unit.level + level > MAX_UNIT_LEVEL) continue;
       ui.highlights.set(k, "move");
     }
-    for (const k of borderTargets(state, province)) {
-      if (canCapture(state, effLevel, k, state.currentPlayer)) ui.highlights.set(k, "capture");
+    // Capture targets: enemy/neutral tiles bordering a tile reachable with a
+    // step to spare.
+    for (const [k, d] of dist) {
+      if (d > range - 1) continue;
+      for (const nk of neighborKeys(k)) {
+        const t = state.tiles.get(nk);
+        if (!t || t.owner === state.currentPlayer || ui.highlights.get(nk) === "capture") continue;
+        if (canCapture(state, effLevel, nk, state.currentPlayer)) ui.highlights.set(nk, "capture");
+      }
     }
   };
 
