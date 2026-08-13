@@ -10,10 +10,11 @@
   let ui = null;
 
   function startGame() {
+    const mode = document.getElementById("opt-mode").value;
     const tileCount = +document.getElementById("opt-size").value;
     const aiCount = +document.getElementById("opt-ai").value;
     const difficulty = document.getElementById("opt-diff").value;
-    state = newGame({ tileCount, aiCount, difficulty });
+    state = newGame({ mode, tileCount, aiCount, difficulty });
     undoStack = [];
     ui.clearSelection();
     document.getElementById("start-overlay").classList.add("hidden");
@@ -187,6 +188,11 @@
   ui = createUI(canvas, renderer, { onTileClick, onEndTurn, onCancel });
 
   document.getElementById("btn-start").addEventListener("click", startGame);
+  document.getElementById("opt-mode").addEventListener("change", e => {
+    const duel = e.target.value === "duel";
+    document.getElementById("opt-size").disabled = duel;
+    document.getElementById("opt-ai").disabled = duel;
+  });
   document.getElementById("btn-restart").addEventListener("click", () => {
     document.getElementById("end-overlay").classList.add("hidden");
     document.getElementById("start-overlay").classList.remove("hidden");

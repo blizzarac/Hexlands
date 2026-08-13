@@ -36,6 +36,12 @@
     <div class="panel">
       <h1>Hexlands</h1>
       <p class="subtitle">A turn-based hex strategy game inspired by Antiyoy</p>
+      <label>Mode
+        <select id="opt-mode">
+          <option value="standard" selected>Free-for-all</option>
+          <option value="duel">Duel — 1v1, fixed map, no luck</option>
+        </select>
+      </label>
       <label>Map size
         <select id="opt-size">
           <option value="130">Small</option>
@@ -75,6 +81,7 @@
           <li>Upgrades: with the Tower or Farm button armed, click the existing building (gold outline). Towers climb a four-step ladder — Watchtower (def 2) → Fort ⬡30 (def 3) → Castle ⬡45 (def 4, boost reaches 2 tiles) → Citadel ⬡60 (boost reaches 3 tiles). Defence caps at 4, so a tower-boosted baron can always break a siege. Farms go to level 3 (+4 income each, +6 on meadows).</li>
           <li>Each AI has a playstyle, shown next to its name: ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands), 🛡️ Turtle (fortifies), ⚖️ Balanced.</li>
           <li>The Sell button lets you sell units, towers and farms for 75% of what they cost — handy for downsizing an army before it bankrupts the province.</li>
+          <li><b>Duel mode</b> is the competitive format: you against one Balanced AI on a fixed, mirror-symmetric map with zero randomness — identical play always produces an identical game, so openings can be studied like chess.</li>
           <li>Win by destroying every enemy province.</li>
         </ul>
       </details>

@@ -16,6 +16,17 @@ python3 -m http.server 8000
 
 You are **blue**. Destroy every enemy province to win.
 
+Two modes:
+
+- **Free-for-all** — you against 1–5 AIs with random playstyles on a random
+  map.
+- **Duel** — the competitive format: you against a single Balanced AI on a
+  fixed, mirror-symmetric map (both starts are exact 180° twins) with zero
+  randomness. Tree growth and every AI decision run off a seeded generator
+  stored in the game state, so identical play always produces an identical
+  game — openings and strategies can be developed like chess lines. Undo
+  preserves the random stream, so it can't be used to reroll outcomes.
+
 - **Provinces** are connected groups of 2+ tiles of one colour. Each province has
   its own treasury, shown above its capital — a small walled town flying
   the owner's banner.

@@ -31,20 +31,44 @@ const MAX_UNIT_LEVEL = 4;
 const PLAYER_COLORS = ["#4f8fd9", "#d9564f", "#9a6bd0", "#d9a13f", "#4fb8b8", "#d06bb0"];
 const PLAYER_NAMES = ["You", "Red", "Purple", "Amber", "Teal", "Pink"];
 
+// Duel mode: 1v1 on a fixed, mirror-symmetric map with no luck anywhere.
+const DUEL_SEED = 0xC1A55;
+const DUEL_TILE_COUNT = 190;
+
+// Game randomness goes through rand(state). In standard games rngState is
+// null and this is plain Math.random; in duel mode it is a mulberry32 stream
+// whose cursor lives in the state (and therefore in undo snapshots), so
+// identical play always produces identical games.
+function rand(state) {
+  if (state.rngState === null || state.rngState === undefined) return Math.random();
+  state.rngState = (state.rngState + 0x6D2B79F5) >>> 0;
+  let t = state.rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
 function newGame(opts) {
-  const playerCount = 1 + opts.aiCount;
+  const isDuel = opts.mode === "duel";
+  const playerCount = isDuel ? 2 : 1 + opts.aiCount;
   const state = {
-    tiles: generateMap(opts.tileCount, playerCount),
+    tiles: null,
     players: [],
     provinces: [],
     nextProvinceId: 1,
     currentPlayer: 0,
     round: 1,
+    mode: isDuel ? "duel" : "standard",
     difficulty: opts.difficulty || "normal",
+    rngState: isDuel ? DUEL_SEED >>> 0 : null,
     gameOver: null, // 'victory' | 'defeat'
   };
+  state.tiles = isDuel
+    ? generateDuelMap(DUEL_TILE_COUNT, () => rand(state))
+    : generateMap(opts.tileCount, playerCount);
   // Deal each AI a playstyle: shuffle so every game feels different, but
   // cycle through the deck so styles stay varied when there are many AIs.
+  // Duels always face a Balanced opponent so the matchup is constant.
   const styleDeck = Object.keys(AI_STYLES);
   for (let i = styleDeck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -56,7 +80,7 @@ function newGame(opts) {
       name: PLAYER_NAMES[i],
       color: PLAYER_COLORS[i],
       isAI: i !== 0,
-      aiStyle: i === 0 ? null : styleDeck[(i - 1) % styleDeck.length],
+      aiStyle: i === 0 ? null : (isDuel ? "balanced" : styleDeck[(i - 1) % styleDeck.length]),
     });
   }
   recomputeProvinces(state);
@@ -345,9 +369,9 @@ function growTrees(state) {
   const sprouts = [];
   for (const [k, t] of state.tiles) {
     if (!t.tree) continue;
-    if (Math.random() >= TREE_SPREAD_CHANCE) continue;
+    if (rand(state) >= TREE_SPREAD_CHANCE) continue;
     const neigh = neighborKeys(k);
-    const nk = neigh[Math.floor(Math.random() * neigh.length)];
+    const nk = neigh[Math.floor(rand(state) * neigh.length)];
     const nt = state.tiles.get(nk);
     if (!nt || nt.tree || nt.unit || nt.structure || nt.grave) continue;
     sprouts.push([nk, t.tree]);
@@ -605,7 +629,9 @@ function snapshotState(state) {
     nextProvinceId: state.nextProvinceId,
     currentPlayer: state.currentPlayer,
     round: state.round,
+    mode: state.mode,
     difficulty: state.difficulty,
+    rngState: state.rngState,
     gameOver: state.gameOver,
   });
 }
@@ -617,6 +643,8 @@ function restoreState(state, snapshot) {
   state.nextProvinceId = data.nextProvinceId;
   state.currentPlayer = data.currentPlayer;
   state.round = data.round;
+  state.mode = data.mode;
   state.difficulty = data.difficulty;
+  state.rngState = data.rngState;
   state.gameOver = data.gameOver;
 }

@@ -87,7 +87,7 @@ function runProvinceTurn(state, player, capital) {
   // 1. Attack with existing units, best targets first. Lower difficulties
   //    have a chance to stop early, leaving units unused.
   for (let guard = 0; guard < 60; guard++) {
-    if (Math.random() > diff.actChance) break;
+    if (rand(state) > diff.actChance) break;
     const province = resolve();
     if (!province) return;
     if (!attackOnce(state, player, province, diff, style)) break;
@@ -132,7 +132,7 @@ function targetValue(state, key, player, diff, style) {
     if (nt && nt.owner !== player && nt.owner !== -1) value += 0.5;
   }
   // Imperfect play: lower difficulties mis-rank their options.
-  value += (Math.random() * 2 - 1) * diff.noise;
+  value += (rand(state) * 2 - 1) * diff.noise;
   return value;
 }
 
@@ -218,7 +218,7 @@ function spendMoney(state, player, province, diff, style) {
 
   // Farm first: compounding income wins long games. Build new farms while
   // there is room; once there isn't, upgrade existing ones.
-  if (Math.random() < style.farmChance) {
+  if (rand(state) < style.farmChance) {
     const spots = province.tiles.filter(k => canPlaceFarm(state, province, k));
     // Meadow farms yield +6 per level instead of +4 — take those spots first.
     const spot = spots.find(k => state.tiles.get(k).terrain === "meadow") || spots[0];
@@ -241,7 +241,7 @@ function spendMoney(state, player, province, diff, style) {
 
   // Buy units that immediately capture something.
   for (let bought = 0; bought < diff.buyCap; bought++) {
-    if (bought > 0 && Math.random() > style.unitZeal) break;
+    if (bought > 0 && rand(state) > style.unitZeal) break;
     const p = state.provinces.find(x => x.id === province.id) ||
       state.provinces.find(x => x.owner === player && x.tiles.includes(province.capitalKey));
     if (!p) return;
@@ -262,7 +262,7 @@ function spendMoney(state, player, province, diff, style) {
   const p = state.provinces.find(x => x.owner === player && x.tiles.includes(province.capitalKey));
   if (!p) return;
   province = p;
-  if (Math.random() < style.towerChance) {
+  if (rand(state) < style.towerChance) {
     const nearEnemy = k => neighborKeys(k).some(nk => {
       const nt = state.tiles.get(nk);
       return nt && nt.owner !== player && nt.owner !== -1;
