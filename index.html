@@ -52,6 +52,13 @@
           <option value="5">5 AIs</option>
         </select>
       </label>
+      <label>Difficulty
+        <select id="opt-diff">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
       <button id="btn-start" class="primary">Start Game</button>
       <details>
         <summary>How to play</summary>
@@ -62,6 +69,7 @@
           <li>Units, towers and capitals defend their tile <i>and</i> all neighbouring tiles.</li>
           <li>Merge two units (move one onto the other) to make a stronger one. Level 4 beats everything.</li>
           <li>Chopping a tree earns 3 coins. Trees spread and block income, so keep them in check.</li>
+          <li>Each AI has a playstyle, shown next to its name: ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands), 🛡️ Turtle (fortifies), ⚖️ Balanced.</li>
           <li>Win by destroying every enemy province.</li>
         </ul>
       </details>

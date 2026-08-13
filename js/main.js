@@ -12,7 +12,8 @@
   function startGame() {
     const tileCount = +document.getElementById("opt-size").value;
     const aiCount = +document.getElementById("opt-ai").value;
-    state = newGame({ tileCount, aiCount });
+    const difficulty = document.getElementById("opt-diff").value;
+    state = newGame({ tileCount, aiCount, difficulty });
     undoStack = [];
     ui.clearSelection();
     document.getElementById("start-overlay").classList.add("hidden");

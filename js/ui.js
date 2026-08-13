@@ -159,10 +159,13 @@ function updateHUD(state, ui, undoAvailable) {
   for (const pl of state.players) {
     const alive = playerAlive(state, pl.id);
     const tiles = [...state.tiles.values()].filter(t => t.owner === pl.id).length;
+    const style = pl.aiStyle ? AI_STYLES[pl.aiStyle] : null;
     const chip = document.createElement("span");
     chip.className = "chip" + (alive ? "" : " dead") +
       (pl.id === state.currentPlayer ? " current" : "");
-    chip.innerHTML = `<span class="dot" style="background:${pl.color}"></span>${pl.name} · ${tiles}`;
+    chip.innerHTML = `<span class="dot" style="background:${pl.color}"></span>` +
+      `${pl.name}${style ? " " + style.icon : ""} · ${tiles}`;
+    if (style) chip.title = `${style.label} (${AI_DIFFICULTIES[state.difficulty].label} difficulty)`;
     chips.appendChild(chip);
   }
 

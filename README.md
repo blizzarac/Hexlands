@@ -29,6 +29,12 @@ You are **blue**. Destroy every enemy province to win.
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree
   chops it for 3 coins (and ends that unit's turn).
+- **Difficulty** (Easy / Normal / Hard) controls how competently the AI plays —
+  how often its units act, how well it picks targets, whether it merges units,
+  and how freely it spends. It never cheats on resources.
+- **Playstyles**: each AI is dealt a personality, shown beside its name —
+  ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands),
+  🛡️ Turtle (fortifies), ⚖️ Balanced.
 - **Splitting**: capturing tiles can split an enemy province — the fragment
   that keeps the capital keeps the money; capturing a capital destroys its
   treasury outright.
@@ -70,4 +76,6 @@ The engine is deliberately small to make extending easy. Some natural hooks:
 - Map editor / seeds: `map.js` is self-contained.
 - Save/load: `snapshotState` / `restoreState` in `rules.js` already serialise
   the full game to JSON.
-- Smarter or harder AI: everything lives in `js/ai.js`.
+- Smarter or harder AI: everything lives in `js/ai.js` — difficulties and
+  playstyles are plain parameter tables (`AI_DIFFICULTIES`, `AI_STYLES`) at the
+  top of the file, so tuning or adding a new personality is a few lines.

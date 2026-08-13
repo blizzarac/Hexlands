@@ -52,11 +52,15 @@ function generateMap(tileCount, playerCount) {
 function placeStartingProvinces(tiles, playerCount) {
   const keys = [...tiles.keys()];
 
+  // Only seed on tiles with room for a full 3-tile starting province.
+  const roomy = keys.filter(k =>
+    neighborKeys(k).filter(nk => tiles.has(nk)).length >= 2);
+
   // Greedy farthest-point seeding so players start spread apart.
-  const seeds = [keys[Math.floor(Math.random() * keys.length)]];
+  const seeds = [roomy[Math.floor(Math.random() * roomy.length)]];
   while (seeds.length < playerCount) {
     let best = null, bestDist = -1;
-    for (const k of keys) {
+    for (const k of roomy) {
       let d = Infinity;
       for (const s of seeds) d = Math.min(d, hexDistance(k, s));
       if (d > bestDist) { bestDist = d; best = k; }

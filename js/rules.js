@@ -29,14 +29,23 @@ function newGame(opts) {
     nextProvinceId: 1,
     currentPlayer: 0,
     round: 1,
+    difficulty: opts.difficulty || "normal",
     gameOver: null, // 'victory' | 'defeat'
   };
+  // Deal each AI a playstyle: shuffle so every game feels different, but
+  // cycle through the deck so styles stay varied when there are many AIs.
+  const styleDeck = Object.keys(AI_STYLES);
+  for (let i = styleDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [styleDeck[i], styleDeck[j]] = [styleDeck[j], styleDeck[i]];
+  }
   for (let i = 0; i < playerCount; i++) {
     state.players.push({
       id: i,
       name: PLAYER_NAMES[i],
       color: PLAYER_COLORS[i],
       isAI: i !== 0,
+      aiStyle: i === 0 ? null : styleDeck[(i - 1) % styleDeck.length],
     });
   }
   recomputeProvinces(state);
@@ -422,6 +431,7 @@ function snapshotState(state) {
     nextProvinceId: state.nextProvinceId,
     currentPlayer: state.currentPlayer,
     round: state.round,
+    difficulty: state.difficulty,
     gameOver: state.gameOver,
   });
 }
@@ -433,5 +443,6 @@ function restoreState(state, snapshot) {
   state.nextProvinceId = data.nextProvinceId;
   state.currentPlayer = data.currentPlayer;
   state.round = data.round;
+  state.difficulty = data.difficulty;
   state.gameOver = data.gameOver;
 }
