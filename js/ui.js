@@ -140,7 +140,7 @@ function createUI(canvas, renderer, callbacks) {
       for (const k of province.tiles) {
         const t = state.tiles.get(k);
         if (!t.unit && !t.structure && !t.tree && !t.grave) ui.highlights.set(k, "build");
-        else if (t.structure === "tower" && (t.structureLevel || 1) < 2) {
+        else if (t.structure === "tower" && (t.structureLevel || 1) < MAX_TOWER_LEVEL) {
           ui.highlights.set(k, "upgrade");
         }
       }
@@ -203,10 +203,14 @@ function updateHUD(state, ui, undoAvailable) {
 
   const canAct = !!own && !state.gameOver;
   const btn = id => document.getElementById(id);
-  const hasUpgradableTower = own && own.tiles.some(k => {
-    const t = state.tiles.get(k);
-    return t.structure === "tower" && (t.structureLevel || 1) < 2;
-  });
+  const cheapestTowerAction = own ? Math.min(TOWER_COST,
+    ...own.tiles
+      .filter(k => {
+        const t = state.tiles.get(k);
+        return t.structure === "tower" && (t.structureLevel || 1) < MAX_TOWER_LEVEL;
+      })
+      .map(k => TOWER_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
+  ) : Infinity;
   const cheapestFarmAction = own ? Math.min(farmCost(state, own),
     ...own.tiles
       .filter(k => {
@@ -216,8 +220,7 @@ function updateHUD(state, ui, undoAvailable) {
       .map(k => FARM_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
   ) : Infinity;
   btn("btn-unit").disabled = !canAct || own.money < UNIT_COST;
-  btn("btn-tower").disabled = !canAct ||
-    own.money < (hasUpgradableTower ? Math.min(TOWER_COST, TOWER_UPGRADE_COST) : TOWER_COST);
+  btn("btn-tower").disabled = !canAct || own.money < cheapestTowerAction;
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;

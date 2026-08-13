@@ -123,7 +123,7 @@ function targetValue(state, key, player, diff, style) {
   let value = t.owner === -1 ? style.neutralValue : style.enemyValue;
   value += ((TERRAIN_INCOME[t.terrain] ?? 1) - 1) * 1.5; // meadows tempt, hills bore
   if (t.structure === "capital") value += 12 * style.structureMult;
-  else if (t.structure === "tower") value += 6 * style.structureMult;
+  else if (t.structure === "tower") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
   else if (t.structure === "farm") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
   if (t.unit) value += t.unit.level * 2;
   // Bonus for tiles that cut into enemy territory.
@@ -265,14 +265,23 @@ function spendMoney(state, player, province, diff, style) {
     const spot = spots.find(k => state.tiles.get(k).terrain === "hills") || spots[0];
     if (spot && province.money >= TOWER_COST + UNIT_COST + diff.reserve) {
       buyTower(state, province.capitalKey, spot);
-    } else if (!spot && province.money >= TOWER_UPGRADE_COST + UNIT_COST + diff.reserve) {
-      // No room for a new tower: upgrade a frontline one to a fort instead
-      // (def 3 and the +1 aura reaches two tiles).
-      const up = province.tiles.find(k => {
-        const t = state.tiles.get(k);
-        return t.structure === "tower" && (t.structureLevel || 1) < 2 && nearEnemy(k);
-      });
-      if (up) buyTower(state, province.capitalKey, up);
+    } else if (!spot) {
+      // No room for a new tower: climb the upgrade ladder on a frontline one,
+      // cheapest (lowest-level) first.
+      const ups = province.tiles
+        .filter(k => {
+          const t = state.tiles.get(k);
+          return t.structure === "tower" && (t.structureLevel || 1) < MAX_TOWER_LEVEL && nearEnemy(k);
+        })
+        .sort((a, b) =>
+          (state.tiles.get(a).structureLevel || 1) - (state.tiles.get(b).structureLevel || 1));
+      const up = ups[0];
+      if (up) {
+        const cost = TOWER_UPGRADE_COSTS[(state.tiles.get(up).structureLevel || 1) + 1];
+        if (province.money >= cost + UNIT_COST + diff.reserve) {
+          buyTower(state, province.capitalKey, up);
+        }
+      }
     }
   }
 }

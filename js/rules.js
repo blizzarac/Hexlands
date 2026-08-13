@@ -8,7 +8,14 @@
 const UNIT_COST = 10;
 const UNIT_UPKEEP = [0, 2, 6, 18, 36]; // indexed by level 1..4
 const TOWER_COST = 15;
-const TOWER_UPGRADE_COST = 20;      // tower (def 2) -> fort (def 3, aura range 2)
+const MAX_TOWER_LEVEL = 4;
+// Watchtower -> Fort -> Castle -> Citadel. Indexed by target level.
+const TOWER_UPGRADE_COSTS = [0, 0, 30, 45, 60];
+const TOWER_DEFENSE = [0, 2, 3, 4, 4];    // by tower level
+const TOWER_AURA_RANGE = [0, 1, 1, 2, 3]; // by tower level
+// No structure may defend above 4: a tower-boosted baron (effective 5) must
+// always be able to break any fortification, or sieges become unwinnable.
+const MAX_STRUCTURE_DEFENSE = 4;
 const MAX_FARM_LEVEL = 3;
 const FARM_BASE_COST = 12;
 const FARM_COST_STEP = 2;
@@ -207,17 +214,19 @@ function farmCost(state, p) {
 // from there).
 const TOWER_AURA_BONUS = 1;
 
-// Towers boost adjacent tiles; forts (level-2 towers) project their aura two
-// tiles out, turning them into area-command structures.
+// Does any friendly tower's aura cover this tile? Watchtowers and forts
+// reach 1 tile, castles 2, citadels 3. Scans the coordinate neighbourhood up
+// to the maximum range.
 function hasTowerAura(state, key, owner) {
-  for (const nk of neighborKeys(key)) {
-    const nt = state.tiles.get(nk);
-    if (nt && nt.owner === owner && nt.structure === "tower") return true;
-    for (const nnk of neighborKeys(nk)) {
-      if (nnk === key) continue;
-      const nnt = state.tiles.get(nnk);
-      if (nnt && nnt.owner === owner && nnt.structure === "tower" &&
-          (nnt.structureLevel || 1) >= 2) return true;
+  const { q, r } = parseKey(key);
+  const R = 3;
+  for (let dq = -R; dq <= R; dq++) {
+    for (let dr = Math.max(-R, -R - dq); dr <= Math.min(R, R - dq); dr++) {
+      if (dq === 0 && dr === 0) continue;
+      const t = state.tiles.get(keyOf(q + dq, r + dr));
+      if (!t || t.owner !== owner || t.structure !== "tower") continue;
+      const d = (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+      if (TOWER_AURA_RANGE[t.structureLevel || 1] >= d) return true;
     }
   }
   return false;
@@ -242,8 +251,9 @@ function tileDefense(state, key) {
     if (tt.unit) d = Math.max(d, effectiveUnitLevel(state, k));
     if (tt.structure === "capital") d = Math.max(d, 1);
     if (tt.structure === "tower") {
-      d = Math.max(d, 1 + (tt.structureLevel || 1) +
-        (tt.terrain === "hills" ? HILL_TOWER_BONUS : 0));
+      const sd = TOWER_DEFENSE[tt.structureLevel || 1] +
+        (tt.terrain === "hills" ? HILL_TOWER_BONUS : 0);
+      d = Math.max(d, Math.min(MAX_STRUCTURE_DEFENSE, sd));
     }
   };
   considerKey(key);
@@ -481,10 +491,12 @@ function buyTower(state, provinceCapital, targetKey) {
   const dest = state.tiles.get(targetKey);
 
   if (dest.structure === "tower") {
-    if ((dest.structureLevel || 1) >= 2) return { ok: false, reason: "Already a fort" };
-    if (province.money < TOWER_UPGRADE_COST) return { ok: false, reason: "Not enough money" };
-    province.money -= TOWER_UPGRADE_COST;
-    dest.structureLevel = 2;
+    const level = dest.structureLevel || 1;
+    if (level >= MAX_TOWER_LEVEL) return { ok: false, reason: "Already a citadel" };
+    const cost = TOWER_UPGRADE_COSTS[level + 1];
+    if (province.money < cost) return { ok: false, reason: "Not enough money" };
+    province.money -= cost;
+    dest.structureLevel = level + 1;
     return { ok: true };
   }
 

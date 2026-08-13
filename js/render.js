@@ -170,7 +170,7 @@ function createRenderer(canvas) {
       if (t.structure === "capital") {
         drawCapital(x, y, t.owner >= 0 ? state.players[t.owner].color : "#d9a13f");
       }
-      if (t.structure === "tower") drawTower(x, y, (t.structureLevel || 1) >= 2);
+      if (t.structure === "tower") drawTower(x, y, t.structureLevel || 1);
       if (t.structure === "farm") drawFarm(x, y, t.structureLevel || 1);
       if (t.unit) {
         drawUnit(x, y, t.unit,
@@ -324,10 +324,10 @@ function createRenderer(canvas) {
     ctx.fill(); ctx.stroke();
   }
 
-  // Level 1 is a lone watchtower; level 2 is a full fort with keep, curtain
-  // wall, gate and flanking towers. Two-tone stone, masonry courses, conical
-  // roofs and lit windows keep them from reading as grey boxes.
-  function drawTower(x, y, fort) {
+  // Four tiers with distinct silhouettes: watchtower, fort, castle, citadel.
+  // Two-tone stone, masonry courses, conical roofs and lit windows keep them
+  // from reading as grey boxes.
+  function drawTower(x, y, level) {
     const G = y + 7.5;
     const stroke = "#2b2f38";
     const stone = "#9aa3b2";
@@ -397,7 +397,46 @@ function createRenderer(canvas) {
       ctx.beginPath(); ctx.rect(bx - w / 2, by, w, h); ctx.fill(); ctx.stroke();
     };
 
-    if (!fort) {
+    const gate = (halfW, portcullis) => {
+      ctx.fillStyle = "#6e4a28";
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - halfW, G);
+      ctx.lineTo(x - halfW, G - halfW * 1.2);
+      ctx.arc(x, G - halfW * 1.2, halfW, Math.PI, 0);
+      ctx.lineTo(x + halfW, G);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      if (portcullis) {
+        ctx.strokeStyle = "rgba(20,12,5,0.5)";
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        for (const dx of [-halfW * 0.5, 0, halfW * 0.5]) {
+          ctx.moveTo(x + dx, G);
+          ctx.lineTo(x + dx, G - (dx === 0 ? halfW * 2.2 : halfW * 1.8));
+        }
+        ctx.stroke();
+      }
+    };
+
+    const pennant = (bx, fromY, len, color = "#d9a13f") => {
+      ctx.strokeStyle = "#3a2f22";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx, fromY);
+      ctx.lineTo(bx, fromY - len);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(bx, fromY - len);
+      ctx.lineTo(bx + len, fromY - len * 0.68);
+      ctx.lineTo(bx, fromY - len * 0.38);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    if (level === 1) {
       // Watchtower: tapered body with a jettied, crenellated crown.
       ctx.fillStyle = stone; ctx.strokeStyle = stroke; ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -422,51 +461,53 @@ function createRenderer(canvas) {
       return;
     }
 
-    // Fort, back to front: keep, curtain wall, flanking roofed towers.
-    body(x, 7.5, 14);
-    crenellate(x, 8.6, G - 14);
-    litWindow(x, G - 11);
-    body(x, 13, 6.5);
-    crenellate(x, 13, G - 6.5);
-    body(x - 8, 5.5, 9.5);
-    cone(x - 8, G - 9.5, 5.5, 5);
-    body(x + 8, 5.5, 9.5);
-    cone(x + 8, G - 9.5, 5.5, 5);
-    litWindow(x - 8, G - 7, 1.6, 2.4);
-    litWindow(x + 8, G - 7, 1.6, 2.4);
-    // wooden gate with portcullis
-    ctx.fillStyle = "#6e4a28";
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x - 2.3, G);
-    ctx.lineTo(x - 2.3, G - 2.8);
-    ctx.arc(x, G - 2.8, 2.3, Math.PI, 0);
-    ctx.lineTo(x + 2.3, G);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = "rgba(20,12,5,0.5)";
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    for (const dx of [-1.2, 0, 1.2]) {
-      ctx.moveTo(x + dx, G);
-      ctx.lineTo(x + dx, G - (dx === 0 ? 5 : 4.2));
+    if (level === 2) {
+      // Fort: broad crenellated keep behind a curtain wall with a gate.
+      body(x, 8.5, 12.5);
+      crenellate(x, 9.6, G - 12.5);
+      litWindow(x, G - 9.5);
+      body(x, 12.5, 6);
+      crenellate(x, 12.5, G - 6);
+      gate(2, false);
+      return;
     }
-    ctx.stroke();
-    // banner on the keep
-    ctx.strokeStyle = "#3a2f22";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, G - 16.4);
-    ctx.lineTo(x, G - 20.6);
-    ctx.stroke();
-    ctx.fillStyle = "#d9a13f";
-    ctx.beginPath();
-    ctx.moveTo(x, G - 20.6);
-    ctx.lineTo(x + 4.2, G - 19.3);
-    ctx.lineTo(x, G - 18);
-    ctx.closePath();
-    ctx.fill();
+
+    if (level === 3) {
+      // Castle: keep with banner, curtain wall, flanking roofed towers.
+      body(x, 7.5, 14);
+      crenellate(x, 8.6, G - 14);
+      litWindow(x, G - 11);
+      body(x, 13, 6.5);
+      crenellate(x, 13, G - 6.5);
+      body(x - 8, 5.5, 9.5);
+      cone(x - 8, G - 9.5, 5.5, 5);
+      body(x + 8, 5.5, 9.5);
+      cone(x + 8, G - 9.5, 5.5, 5);
+      litWindow(x - 8, G - 7, 1.6, 2.4);
+      litWindow(x + 8, G - 7, 1.6, 2.4);
+      gate(2.3, true);
+      pennant(x, G - 16.4, 4.2);
+      return;
+    }
+
+    // Citadel: great roofed keep, twin roofed towers with pennants, wide
+    // gated wall.
+    body(x, 8.5, 15);
+    cone(x, G - 15, 8.5, 6);
+    body(x - 9, 6, 11);
+    cone(x - 9, G - 11, 6, 4.6);
+    body(x + 9, 6, 11);
+    cone(x + 9, G - 11, 6, 4.6);
+    body(x, 15, 6.5);
+    crenellate(x, 15, G - 6.5);
+    litWindow(x, G - 11.5);
+    litWindow(x, G - 4.8, 1.7, 2.2);
+    litWindow(x - 9, G - 9, 1.6, 2.4);
+    litWindow(x + 9, G - 9, 1.6, 2.4);
+    gate(2.7, true);
+    pennant(x, G - 21, 4.6);
+    pennant(x - 9, G - 15.6, 3.2);
+    pennant(x + 9, G - 15.6, 3.2);
   }
 
   // Farms grow with their level: cottage -> farmhouse with barn -> villa.

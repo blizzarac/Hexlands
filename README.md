@@ -37,17 +37,24 @@ You are **blue**. Destroy every enemy province to win.
   *strictly higher* than the tile's defence — equal defence always blocks,
   even for level 4. Units, towers (def 2), forts (def 3) and capitals (def 1)
   defend their own tile *and* all six neighbours.
-- **Tower aura**: friendly units standing next to a tower fight at +1
-  effective level (shown as a gold ring and +1 badge); a fort projects that
-  boost two tiles out. The boost is positional — it applies to attacks
-  launched from that spot and to defence while standing there. Selecting a
-  province shows its aura tiles in gold. A tower-boosted level 4
-  (effective 5) is the only way to break a level-4 defensive wall by force;
-  the alternatives are splitting the province or starving its treasury.
+- **Tower ladder**: towers upgrade through four tiers, each with its own look:
+
+  | Tier | Upgrade cost | Total | Defence | Aura range |
+  |---|---|---|---|---|
+  | Watchtower | 15 | 15 | 2 | 1 |
+  | Fort | +30 | 45 | 3 | 1 |
+  | Castle | +45 | 90 | 4 | 2 |
+  | Citadel | +60 | 150 | 4 | 3 |
+
+  Hills add +1 defence, but structure defence is hard-capped at 4 so that a
+  tower-boosted baron (effective 5) can always break any fortification.
+- **Tower aura**: friendly units inside a tower's aura fight at +1 effective
+  level (gold ring and +1 badge). The boost is positional — it applies to
+  attacks launched from that spot and to defence while standing there.
+  Selecting a province shows its aura tiles in gold.
 - **Upgrades**: with the Tower or Farm button armed, click an existing
-  building (gold outline) to upgrade it. A tower upgrades into a fort for
-  20 — defence 3 (4 on hills) and aura range 2. Farms level up to 3
-  (+4 income per level, +6 on meadows, costing 20 then 30).
+  building (gold outline) to upgrade it. Farms level up to 3 (+4 income per
+  level, +6 on meadows, costing 20 then 30).
 - **Merging**: move a unit onto a friendly unit to combine their levels
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree
