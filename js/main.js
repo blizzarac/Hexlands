@@ -54,7 +54,7 @@
         const ok = attempt(() => {
           if (kind === "unit") return buyUnit(state, capital, key);
           if (kind === "farm") return buyFarm(state, capital, key);
-          return buyTower(state, capital, key, kind === "strongtower");
+          return buyTower(state, capital, key);
         });
         if (ok) {
           ui.placing = null;
@@ -186,7 +186,6 @@
   });
   document.getElementById("btn-unit").addEventListener("click", () => armPlacement("unit"));
   document.getElementById("btn-tower").addEventListener("click", () => armPlacement("tower"));
-  document.getElementById("btn-stower").addEventListener("click", () => armPlacement("strongtower"));
   document.getElementById("btn-farm").addEventListener("click", () => armPlacement("farm"));
   document.getElementById("btn-end").addEventListener("click", onEndTurn);
   document.getElementById("btn-undo").addEventListener("click", onUndo);

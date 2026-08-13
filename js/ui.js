@@ -5,7 +5,7 @@ function createUI(canvas, renderer, callbacks) {
   const ui = {
     selectedProvinceKey: null, // any tile key inside the selected province
     selectedUnitKey: null,
-    placing: null,             // 'unit' | 'tower' | 'strongtower' | 'farm'
+    placing: null,             // 'unit' | 'tower' | 'farm'
     highlights: new Map(),     // tile key -> 'move' | 'capture' | 'build'
   };
 
@@ -131,7 +131,7 @@ function createUI(canvas, renderer, callbacks) {
       for (const k of province.tiles) {
         const t = state.tiles.get(k);
         if (!t.unit && !t.structure && !t.tree && !t.grave) ui.highlights.set(k, "build");
-        else if (kind === "strongtower" && t.structure === "tower" && (t.structureLevel || 1) < 2) {
+        else if (t.structure === "tower" && (t.structureLevel || 1) < 2) {
           ui.highlights.set(k, "upgrade");
         }
       }
@@ -207,9 +207,8 @@ function updateHUD(state, ui, undoAvailable) {
       .map(k => FARM_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
   ) : Infinity;
   btn("btn-unit").disabled = !canAct || own.money < UNIT_COST;
-  btn("btn-tower").disabled = !canAct || own.money < TOWER_COST;
-  btn("btn-stower").disabled = !canAct ||
-    own.money < (hasUpgradableTower ? TOWER_UPGRADE_COST : STRONG_TOWER_COST);
+  btn("btn-tower").disabled = !canAct ||
+    own.money < (hasUpgradableTower ? Math.min(TOWER_COST, TOWER_UPGRADE_COST) : TOWER_COST);
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;
@@ -217,7 +216,7 @@ function updateHUD(state, ui, undoAvailable) {
     own ? `⬡${farmCost(state, own)}` : "⬡12";
 
   for (const [id, kind] of [["btn-unit", "unit"], ["btn-tower", "tower"],
-    ["btn-stower", "strongtower"], ["btn-farm", "farm"]]) {
+    ["btn-farm", "farm"]]) {
     btn(id).classList.toggle("armed", ui.placing === kind);
   }
 }

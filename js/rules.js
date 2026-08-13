@@ -8,8 +8,7 @@
 const UNIT_COST = 10;
 const UNIT_UPKEEP = [0, 2, 6, 18, 36]; // indexed by level 1..4
 const TOWER_COST = 15;
-const STRONG_TOWER_COST = 35;
-const TOWER_UPGRADE_COST = 20;      // tower (def 2) -> fort (def 3)
+const TOWER_UPGRADE_COST = 20;      // tower (def 2) -> fort (def 3, aura range 2)
 const MAX_FARM_LEVEL = 3;
 const FARM_BASE_COST = 12;
 const FARM_COST_STEP = 2;
@@ -208,11 +207,20 @@ function farmCost(state, p) {
 // from there).
 const TOWER_AURA_BONUS = 1;
 
+// Towers boost adjacent tiles; forts (level-2 towers) project their aura two
+// tiles out, turning them into area-command structures.
 function hasTowerAura(state, key, owner) {
-  return neighborKeys(key).some(nk => {
+  for (const nk of neighborKeys(key)) {
     const nt = state.tiles.get(nk);
-    return nt && nt.owner === owner && nt.structure === "tower";
-  });
+    if (nt && nt.owner === owner && nt.structure === "tower") return true;
+    for (const nnk of neighborKeys(nk)) {
+      if (nnk === key) continue;
+      const nnt = state.tiles.get(nnk);
+      if (nnt && nnt.owner === owner && nnt.structure === "tower" &&
+          (nnt.structureLevel || 1) >= 2) return true;
+    }
+  }
+  return false;
 }
 
 function effectiveUnitLevel(state, key) {
@@ -420,15 +428,16 @@ function buyUnit(state, provinceCapital, targetKey) {
   return { ok: true };
 }
 
-function buyTower(state, provinceCapital, targetKey, strong) {
+// One entry point for the whole tower family: builds a tower on an empty
+// tile, or upgrades an existing level-1 tower into a fort.
+function buyTower(state, provinceCapital, targetKey) {
   const province = state.provinces.find(
     p => p.capitalKey === provinceCapital && p.owner === state.currentPlayer);
   if (!province) return { ok: false, reason: "No such province" };
   if (!province.tiles.includes(targetKey)) return { ok: false, reason: "Must build on your own province" };
   const dest = state.tiles.get(targetKey);
 
-  // Upgrade path: a fort purchase aimed at an existing tower.
-  if (strong && dest.structure === "tower") {
+  if (dest.structure === "tower") {
     if ((dest.structureLevel || 1) >= 2) return { ok: false, reason: "Already a fort" };
     if (province.money < TOWER_UPGRADE_COST) return { ok: false, reason: "Not enough money" };
     province.money -= TOWER_UPGRADE_COST;
@@ -436,14 +445,13 @@ function buyTower(state, provinceCapital, targetKey, strong) {
     return { ok: true };
   }
 
-  const cost = strong ? STRONG_TOWER_COST : TOWER_COST;
-  if (province.money < cost) return { ok: false, reason: "Not enough money" };
+  if (province.money < TOWER_COST) return { ok: false, reason: "Not enough money" };
   if (dest.unit || dest.structure || dest.tree || dest.grave) {
     return { ok: false, reason: "Tile must be empty" };
   }
-  province.money -= cost;
+  province.money -= TOWER_COST;
   dest.structure = "tower";
-  dest.structureLevel = strong ? 2 : 1;
+  dest.structureLevel = 1;
   return { ok: true };
 }
 

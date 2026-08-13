@@ -242,14 +242,15 @@ function spendMoney(state, player, province, diff, style) {
     // Hills make towers defend one level higher — grab those spots first.
     const spot = spots.find(k => state.tiles.get(k).terrain === "hills") || spots[0];
     if (spot && province.money >= TOWER_COST + UNIT_COST + diff.reserve) {
-      buyTower(state, province.capitalKey, spot, false);
+      buyTower(state, province.capitalKey, spot);
     } else if (!spot && province.money >= TOWER_UPGRADE_COST + UNIT_COST + diff.reserve) {
-      // No room for a new tower: upgrade a frontline one to a fort instead.
+      // No room for a new tower: upgrade a frontline one to a fort instead
+      // (def 3 and the +1 aura reaches two tiles).
       const up = province.tiles.find(k => {
         const t = state.tiles.get(k);
         return t.structure === "tower" && (t.structureLevel || 1) < 2 && nearEnemy(k);
       });
-      if (up) buyTower(state, province.capitalKey, up, true);
+      if (up) buyTower(state, province.capitalKey, up);
     }
   }
 }
