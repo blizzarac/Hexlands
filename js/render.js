@@ -59,6 +59,22 @@ function createRenderer(canvas) {
     return `rgb(${r},${g},${b})`;
   }
 
+  // Blend a base '#rrggbb' colour toward another by factor t (0..1).
+  function mix(hexA, hexB, t) {
+    const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+    const ch = (sa, sb) => Math.round(sa + (sb - sa) * t);
+    const r = ch(a >> 16, b >> 16);
+    const g = ch((a >> 8) & 255, (b >> 8) & 255);
+    const bl = ch(a & 255, b & 255);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+  }
+
+  function terrainColor(base, terrain) {
+    if (terrain === "meadow") return mix(base, "#57b85f", 0.28);
+    if (terrain === "hills") return mix(base, "#55504b", 0.38);
+    return base;
+  }
+
   function draw(state, view) {
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -74,7 +90,8 @@ function createRenderer(canvas) {
     // Tile fills
     for (const t of state.tiles.values()) {
       const { x, y } = hexToPixel(t.q, t.r, HEX_SIZE);
-      const base = t.owner >= 0 ? state.players[t.owner].color : NEUTRAL_COLOR;
+      const owned = t.owner >= 0 ? state.players[t.owner].color : NEUTRAL_COLOR;
+      const base = terrainColor(owned, t.terrain);
       hexPath(x, y, 0.985);
       ctx.fillStyle = selectedTiles && selectedTiles.has(keyOf(t.q, t.r)) ? shade(base, 26) : base;
       ctx.fill();
@@ -146,6 +163,8 @@ function createRenderer(canvas) {
     // Objects
     for (const [k, t] of state.tiles) {
       const { x, y } = hexToPixel(t.q, t.r, HEX_SIZE);
+      if (t.terrain === "hills") drawHills(x, y);
+      else if (t.terrain === "meadow" && !t.structure && !t.unit) drawMeadow(x, y);
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
       if (t.structure === "capital") drawCapital(x, y);
@@ -184,6 +203,33 @@ function createRenderer(canvas) {
       ctx.strokeText(label, x, y - HEX_SIZE * 0.72);
       ctx.fillStyle = "#ffe9a8";
       ctx.fillText(label, x, y - HEX_SIZE * 0.72);
+    }
+  }
+
+  function drawHills(x, y) {
+    ctx.fillStyle = "rgba(60,55,50,0.55)";
+    ctx.strokeStyle = "rgba(30,27,24,0.6)";
+    ctx.lineWidth = 1;
+    for (const [dx, w] of [[-5, 7], [4, 5.5]]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx - w, y + 8);
+      ctx.quadraticCurveTo(x + dx, y + 8 - w * 1.5, x + dx + w, y + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawMeadow(x, y) {
+    ctx.strokeStyle = "rgba(35,110,55,0.55)";
+    ctx.lineWidth = 1.2;
+    for (const [dx, dy] of [[-6, 5], [1, 7], [6, 4]]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx, y + dy);
+      ctx.lineTo(x + dx - 1.5, y + dy - 4);
+      ctx.moveTo(x + dx, y + dy);
+      ctx.lineTo(x + dx + 1.5, y + dy - 3);
+      ctx.stroke();
     }
   }
 

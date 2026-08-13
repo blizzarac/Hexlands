@@ -18,8 +18,12 @@ You are **blue**. Destroy every enemy province to win.
 
 - **Provinces** are connected groups of 2+ tiles of one colour. Each province has
   its own treasury, shown on its capital (★).
-- **Income**: every tile earns 1 coin per round; a farm adds 4. Tiles covered by
-  trees or gravestones earn nothing.
+- **Terrain**: plains earn 1 coin per round, meadows earn 2, hills earn 0 —
+  but towers built on hills defend one level higher (a hill fort defends
+  at 4). Farms cannot be built on hills. Starting provinces are always
+  plains.
+- **Income**: a farm adds 4 per farm level on top of terrain income. Tiles
+  covered by trees or gravestones earn nothing.
 - **Units** (levels 1–4) cost 10 coins and upkeep of 2 / 6 / 18 / 36 per round.
   If a province's treasury goes negative, all of its units starve.
 - **Combat**: a unit captures an adjacent tile only if its effective level is

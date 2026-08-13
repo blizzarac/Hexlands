@@ -16,6 +16,8 @@ const FARM_COST_STEP = 2;
 const FARM_INCOME = 4;              // per farm level
 const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
 const TREE_CHOP_REWARD = 3;
+const TERRAIN_INCOME = { plains: 1, meadow: 2, hills: 0 };
+const HILL_TOWER_BONUS = 1; // towers/forts built on hills defend one level higher
 const TREE_SPREAD_CHANCE = 0.10; // per tree per round, one random neighbour
 const START_MONEY = 10;
 const MAX_UNIT_LEVEL = 4;
@@ -172,7 +174,7 @@ function provinceIncome(state, p) {
   for (const k of p.tiles) {
     const t = state.tiles.get(k);
     if (t.tree || t.grave) continue;
-    income += 1;
+    income += TERRAIN_INCOME[t.terrain] ?? 1;
     if (t.structure === "farm") income += FARM_INCOME * (t.structureLevel || 1);
   }
   return income;
@@ -229,7 +231,10 @@ function tileDefense(state, key) {
     if (!tt || tt.owner !== t.owner) return;
     if (tt.unit) d = Math.max(d, effectiveUnitLevel(state, k));
     if (tt.structure === "capital") d = Math.max(d, 1);
-    if (tt.structure === "tower") d = Math.max(d, 1 + (tt.structureLevel || 1));
+    if (tt.structure === "tower") {
+      d = Math.max(d, 1 + (tt.structureLevel || 1) +
+        (tt.terrain === "hills" ? HILL_TOWER_BONUS : 0));
+    }
   };
   considerKey(key);
   for (const nk of neighborKeys(key)) considerKey(nk);
@@ -443,6 +448,7 @@ function buyTower(state, provinceCapital, targetKey, strong) {
 function canPlaceFarm(state, province, key) {
   const t = state.tiles.get(key);
   if (!t || !province.tiles.includes(key)) return false;
+  if (t.terrain === "hills") return false; // too rocky to farm
   if (t.unit || t.structure || t.tree || t.grave) return false;
   return neighborKeys(key).some(nk => {
     const nt = state.tiles.get(nk);

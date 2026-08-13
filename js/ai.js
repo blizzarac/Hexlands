@@ -121,6 +121,7 @@ function borderTargets(state, province) {
 function targetValue(state, key, player, diff, style) {
   const t = state.tiles.get(key);
   let value = t.owner === -1 ? style.neutralValue : style.enemyValue;
+  value += ((TERRAIN_INCOME[t.terrain] ?? 1) - 1) * 1.5; // meadows tempt, hills bore
   if (t.structure === "capital") value += 12 * style.structureMult;
   else if (t.structure === "tower") value += 6 * style.structureMult;
   else if (t.structure === "farm") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
@@ -229,12 +230,14 @@ function spendMoney(state, player, province, diff, style) {
       const nt = state.tiles.get(nk);
       return nt && nt.owner !== player && nt.owner !== -1;
     });
-    const spot = province.tiles.find(k => {
+    const spots = province.tiles.filter(k => {
       const t = state.tiles.get(k);
       if (t.unit || t.structure || t.tree || t.grave) return false;
       if (tileDefense(state, k) >= 2) return false;
       return nearEnemy(k);
     });
+    // Hills make towers defend one level higher — grab those spots first.
+    const spot = spots.find(k => state.tiles.get(k).terrain === "hills") || spots[0];
     if (spot && province.money >= TOWER_COST + UNIT_COST + diff.reserve) {
       buyTower(state, province.capitalKey, spot, false);
     } else if (!spot && province.money >= TOWER_UPGRADE_COST + UNIT_COST + diff.reserve) {

@@ -8,6 +8,7 @@ function generateMap(tileCount, playerCount) {
     tiles.set(keyOf(q, r), {
       q, r,
       owner: -1,
+      terrain: "plains",    // 'plains' | 'meadow' | 'hills'
       unit: null,           // { level, moved }
       structure: null,      // 'capital' | 'tower' | 'farm'
       structureLevel: null, // tower 1-2 (fort), farm 1-3; null for capital
@@ -45,9 +46,36 @@ function generateMap(tileCount, playerCount) {
     }
   }
 
+  paintTerrain(tiles);
   placeStartingProvinces(tiles, playerCount);
   sprinkleTrees(tiles);
   return tiles;
+}
+
+// Grow meadow and hill patches over the plains: pick seeds, then expand each
+// into a small organic blob.
+function paintTerrain(tiles) {
+  const keys = [...tiles.keys()];
+  const growPatch = (terrain, size) => {
+    const seed = keys[Math.floor(Math.random() * keys.length)];
+    if (tiles.get(seed).terrain !== "plains") return;
+    const patch = [seed];
+    tiles.get(seed).terrain = terrain;
+    for (let n = 1; n < size; n++) {
+      const from = patch[Math.floor(Math.random() * patch.length)];
+      const options = neighborKeys(from).filter(nk => {
+        const t = tiles.get(nk);
+        return t && t.terrain === "plains";
+      });
+      if (options.length === 0) continue;
+      const nk = options[Math.floor(Math.random() * options.length)];
+      tiles.get(nk).terrain = terrain;
+      patch.push(nk);
+    }
+  };
+  const patches = Math.max(2, Math.round(tiles.size / 55));
+  for (let i = 0; i < patches; i++) growPatch("meadow", 4 + Math.floor(Math.random() * 5));
+  for (let i = 0; i < patches; i++) growPatch("hills", 4 + Math.floor(Math.random() * 5));
 }
 
 function placeStartingProvinces(tiles, playerCount) {
@@ -80,7 +108,11 @@ function placeStartingProvinces(tiles, playerCount) {
       const i = Math.floor(Math.random() * options.length);
       claimed.push(options.splice(i, 1)[0]);
     }
-    for (const k of claimed) tiles.get(k).owner = player;
+    for (const k of claimed) {
+      const t = tiles.get(k);
+      t.owner = player;
+      t.terrain = "plains"; // fair starts: no one begins on hills or meadow
+    }
     tiles.get(seed).structure = "capital";
   });
 }
