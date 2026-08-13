@@ -17,7 +17,8 @@ python3 -m http.server 8000
 You are **blue**. Destroy every enemy province to win.
 
 - **Provinces** are connected groups of 2+ tiles of one colour. Each province has
-  its own treasury, shown on its capital (★).
+  its own treasury, shown above its capital — a small walled town flying
+  the owner's banner.
 - **Terrain**: plains earn 1 coin per round, meadows earn 2, hills earn 0 —
   but towers built on hills defend one level higher (a hill fort defends
   at 4). Farms cannot be built on hills. Starting provinces are always

@@ -167,7 +167,9 @@ function createRenderer(canvas) {
       else if (t.terrain === "meadow" && !t.structure && !t.unit) drawMeadow(x, y);
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
-      if (t.structure === "capital") drawCapital(x, y);
+      if (t.structure === "capital") {
+        drawCapital(x, y, t.owner >= 0 ? state.players[t.owner].color : "#d9a13f");
+      }
       if (t.structure === "tower") drawTower(x, y, (t.structureLevel || 1) >= 2);
       if (t.structure === "farm") drawFarm(x, y, t.structureLevel || 1);
       if (t.unit) {
@@ -253,20 +255,73 @@ function createRenderer(canvas) {
     ctx.stroke();
   }
 
-  function drawCapital(x, y) {
-    ctx.fillStyle = "#ffd24a";
-    ctx.strokeStyle = "#7a5b12";
-    ctx.lineWidth = 1.5;
+  // The capital is a small walled town flying the owner's banner.
+  function drawCapital(x, y, bannerColor) {
+    const G = y + 7.5;
+    const stroke = "#2b2f38";
+    const stone = "#9aa3b2";
+    const stoneShade = "#6a7280";
+    const roof = "#b04a3a";
+    const wall = "#e8dcc0";
+
+    // Houses peeking above the wall (drawn first, wall overlaps their feet).
+    const house = (bx, w, h, roofH) => {
+      ctx.lineWidth = 1;
+      ctx.fillStyle = wall;
+      ctx.strokeStyle = stroke;
+      ctx.beginPath(); ctx.rect(bx - w / 2, G - h, w, h); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = roof;
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2 - 1.2, G - h);
+      ctx.lineTo(bx, G - h - roofH);
+      ctx.lineTo(bx + w / 2 + 1.2, G - h);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    };
+    house(x - 4.6, 6, 8.5, 4);
+    house(x + 4.6, 6, 7.5, 3.6);
+    house(x, 6.5, 11, 4.5); // central hall, tallest
+
+    // Town wall with crenellations and a gate.
+    ctx.fillStyle = stone;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.rect(x - 8.8, G - 4.8, 17.6, 4.8); ctx.fill();
+    ctx.fillStyle = stoneShade;
+    ctx.fillRect(x + 4.4, G - 4.8, 4.4, 4.8);
+    ctx.beginPath(); ctx.rect(x - 8.8, G - 4.8, 17.6, 4.8); ctx.stroke();
+    ctx.fillStyle = stone;
     ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const rr = i % 2 === 0 ? 10 : 4.5;
-      const a = -Math.PI / 2 + i * Math.PI / 5;
-      const px = x + rr * Math.cos(a), py = y + rr * Math.sin(a);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    for (let i = 0; i < 5; i++) {
+      ctx.rect(x - 8.8 + i * 3.52 + 0.6, G - 6.6, 1.8, 1.8);
     }
+    ctx.fill(); ctx.stroke();
+    // gate
+    ctx.fillStyle = "#6e4a28";
+    ctx.beginPath();
+    ctx.moveTo(x - 1.7, G);
+    ctx.lineTo(x - 1.7, G - 2.2);
+    ctx.arc(x, G - 2.2, 1.7, Math.PI, 0);
+    ctx.lineTo(x + 1.7, G);
     ctx.closePath();
-    ctx.fill();
+    ctx.fill(); ctx.stroke();
+
+    // Owner banner on the central hall.
+    ctx.strokeStyle = "#3a2f22";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, G - 15.5);
+    ctx.lineTo(x, G - 20);
     ctx.stroke();
+    // Lightened so the banner stands out against the owner's own tile colour.
+    ctx.fillStyle = shade(bannerColor, 55);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x, G - 20);
+    ctx.lineTo(x + 4.6, G - 18.6);
+    ctx.lineTo(x, G - 17.2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
   }
 
   // Level 1 is a lone watchtower; level 2 is a full fort with keep, curtain
