@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Hexlands — an Antiyoy-like strategy game</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⬡</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="topbar">
+      <span id="round-label">Round 1</span>
+      <span id="player-chips"></span>
+    </div>
+    <div id="toast"></div>
+    <div id="bottombar">
+      <div id="province-info">
+        <span id="prov-money">—</span>
+        <span id="prov-income"></span>
+      </div>
+      <div id="actions">
+        <button id="btn-unit"  title="Buy a peasant (level 1). Drop it on an existing unit to upgrade it.">Unit ⬡10</button>
+        <button id="btn-tower" title="Tower: defends its tile and neighbours at level 2.">Tower ⬡15</button>
+        <button id="btn-stower" title="Strong tower: defends at level 3.">Fort ⬡35</button>
+        <button id="btn-farm"  title="Farm: +4 income. Must be next to the capital or another farm.">Farm <span id="farm-cost">⬡12</span></button>
+        <button id="btn-undo"  title="Undo your last action this turn.">Undo</button>
+        <button id="btn-end"   class="primary" title="End your turn.">End Turn</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="start-overlay" class="overlay">
+    <div class="panel">
+      <h1>Hexlands</h1>
+      <p class="subtitle">A turn-based hex strategy game inspired by Antiyoy</p>
+      <label>Map size
+        <select id="opt-size">
+          <option value="130">Small</option>
+          <option value="220" selected>Medium</option>
+          <option value="340">Large</option>
+        </select>
+      </label>
+      <label>Opponents
+        <select id="opt-ai">
+          <option value="1">1 AI</option>
+          <option value="2">2 AIs</option>
+          <option value="3" selected>3 AIs</option>
+          <option value="4">4 AIs</option>
+          <option value="5">5 AIs</option>
+        </select>
+      </label>
+      <button id="btn-start" class="primary">Start Game</button>
+      <details>
+        <summary>How to play</summary>
+        <ul>
+          <li>Click one of your provinces (your colour is <b class="you">blue</b>) to select it.</li>
+          <li>Each tile earns 1 coin per round; farms add 4. Units cost upkeep every round — if a province goes broke, all its units die.</li>
+          <li>Click a unit, then a highlighted tile to move it. Units capture adjacent tiles that are defended at a lower level than their own.</li>
+          <li>Units, towers and capitals defend their tile <i>and</i> all neighbouring tiles.</li>
+          <li>Merge two units (move one onto the other) to make a stronger one. Level 4 beats everything.</li>
+          <li>Chopping a tree earns 3 coins. Trees spread and block income, so keep them in check.</li>
+          <li>Win by destroying every enemy province.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay hidden">
+    <div class="panel">
+      <h1 id="end-title">Victory!</h1>
+      <p id="end-text"></p>
+      <button id="btn-restart" class="primary">Play Again</button>
+    </div>
+  </div>
+
+  <script src="js/hex.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

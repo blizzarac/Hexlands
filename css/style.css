@@ -1,0 +1,153 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #1c2431;
+  color: #e8e8e8;
+  touch-action: none;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+}
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(to bottom, rgba(10, 14, 20, 0.85), rgba(10, 14, 20, 0));
+  font-size: 15px;
+}
+
+#round-label { font-weight: 600; }
+
+#player-chips { display: flex; gap: 8px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+}
+
+.chip .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.chip.dead { opacity: 0.4; text-decoration: line-through; }
+.chip.current { outline: 1.5px solid rgba(255, 255, 255, 0.75); }
+
+#toast {
+  align-self: center;
+  margin-top: 4px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  background: rgba(10, 14, 20, 0.85);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+#toast.show { opacity: 1; }
+
+#bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px 14px;
+  background: linear-gradient(to top, rgba(10, 14, 20, 0.9), rgba(10, 14, 20, 0));
+}
+
+#province-info {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 130px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+#prov-income { font-size: 13.5px; font-weight: 400; color: #b8c4d0; }
+
+#actions { display: flex; gap: 8px; flex-wrap: wrap; pointer-events: auto; }
+
+button {
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: #2c3a4e;
+  color: #e8e8e8;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+button:hover:not(:disabled) { background: #3a4c66; }
+button:disabled { opacity: 0.4; cursor: default; }
+button.primary { background: #3f7ac2; border-color: #6aa4e0; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: #4c8bd6; }
+button.armed { background: #b07a2c; border-color: #e0b06a; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 11, 17, 0.78);
+  z-index: 10;
+}
+.overlay.hidden { display: none; }
+
+.panel {
+  background: #232e40;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 28px 34px;
+  max-width: 440px;
+  width: calc(100% - 40px);
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel h1 { font-size: 30px; }
+.panel .subtitle { color: #aab8c8; margin-top: -8px; }
+.panel label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+.panel select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #2c3a4e;
+  color: #e8e8e8;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 14px;
+}
+.panel details { font-size: 14px; color: #c8d2dc; }
+.panel summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
+.panel ul { padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.panel .you { color: #7db4ec; }
