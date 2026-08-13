@@ -16,7 +16,7 @@ const FARM_COST_STEP = 2;
 const FARM_INCOME = 4;              // per farm level
 const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
 const TREE_CHOP_REWARD = 3;
-const TREE_SPREAD_CHANCE = 0.04;
+const TREE_SPREAD_CHANCE = 0.10; // per tree per round, one random neighbour
 const START_MONEY = 10;
 const MAX_UNIT_LEVEL = 4;
 
@@ -276,15 +276,19 @@ function startPlayerTurn(state, player) {
   }
 }
 
+// Each tree gets one spread roll per round at one random neighbour, so growth
+// stays gentle and slows naturally as forests fill in (interior trees mostly
+// waste their roll on occupied tiles).
 function growTrees(state) {
   const sprouts = [];
   for (const [k, t] of state.tiles) {
     if (!t.tree) continue;
-    for (const nk of neighborKeys(k)) {
-      const nt = state.tiles.get(nk);
-      if (!nt || nt.tree || nt.unit || nt.structure || nt.grave) continue;
-      if (Math.random() < TREE_SPREAD_CHANCE) sprouts.push([nk, t.tree]);
-    }
+    if (Math.random() >= TREE_SPREAD_CHANCE) continue;
+    const neigh = neighborKeys(k);
+    const nk = neigh[Math.floor(Math.random() * neigh.length)];
+    const nt = state.tiles.get(nk);
+    if (!nt || nt.tree || nt.unit || nt.structure || nt.grave) continue;
+    sprouts.push([nk, t.tree]);
   }
   for (const [k, kind] of sprouts) {
     const t = state.tiles.get(k);
