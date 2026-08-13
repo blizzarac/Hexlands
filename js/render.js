@@ -287,25 +287,76 @@ function createRenderer(canvas) {
     }
   }
 
+  // Farms grow with their level: cottage -> farmhouse with barn -> villa.
   function drawFarm(x, y, level) {
-    ctx.fillStyle = "#e8c56a";
-    ctx.strokeStyle = "#6e5518";
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.rect(x - 6.5, y - 1, 13, 8);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#b04a3a";
-    ctx.beginPath();
-    ctx.moveTo(x - 8.5, y - 1);
-    ctx.lineTo(x, y - 9);
-    ctx.lineTo(x + 8.5, y - 1);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // level pips on the roof
-    ctx.fillStyle = "#ffe9a8";
-    for (let i = 0; i < level - 1; i++) {
+    const GROUND = y + 7.5;
+    const stroke = "#6e5518";
+    const roof = "#b04a3a";
+    const wall = level >= 3 ? "#efe2c6" : "#e8c56a";
+
+    // One gabled building block; (bx, GROUND) is the bottom-centre.
+    const block = (bx, w, h, roofH) => {
+      ctx.lineWidth = 1.2;
+      ctx.fillStyle = wall;
+      ctx.strokeStyle = stroke;
       ctx.beginPath();
-      ctx.arc(x - 3 + i * 6, y - 3.2, 1.8, 0, Math.PI * 2);
+      ctx.rect(bx - w / 2, GROUND - h, w, h);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = roof;
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2 - 1.5, GROUND - h);
+      ctx.lineTo(bx, GROUND - h - roofH);
+      ctx.lineTo(bx + w / 2 + 1.5, GROUND - h);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    };
+    const door = (bx, w = 2.6, h = 3.6) => {
+      ctx.fillStyle = "#5b4225";
+      ctx.fillRect(bx - w / 2, GROUND - h, w, h);
+    };
+    const window_ = (bx, by) => {
+      ctx.fillStyle = "#fff3c4";
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.rect(bx - 1.3, by - 1.3, 2.6, 2.6);
+      ctx.fill(); ctx.stroke();
+    };
+
+    if (level === 1) {
+      // Cottage
+      block(x, 10, 6, 5);
+      door(x);
+    } else if (level === 2) {
+      // Farmhouse with a barn annex and a chimney
+      block(x - 3, 11, 7.5, 6);
+      block(x + 5.8, 7, 5, 3.5);
+      ctx.fillStyle = "#8a8378";
+      ctx.fillRect(x - 6.2, GROUND - 15, 2.2, 5); // chimney
+      door(x - 3);
+      window_(x + 5.8, GROUND - 2.6);
+    } else {
+      // Villa: two wings flanking a tall centre block
+      block(x - 6.8, 6.5, 5.5, 3.5);
+      block(x + 6.8, 6.5, 5.5, 3.5);
+      block(x, 9.5, 9.5, 5.5);
+      door(x, 3, 4);
+      window_(x - 6.8, GROUND - 3);
+      window_(x + 6.8, GROUND - 3);
+      window_(x, GROUND - 7);
+      // little flag on the villa roof
+      ctx.strokeStyle = "#5b4225";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, GROUND - 15);
+      ctx.lineTo(x, GROUND - 19);
+      ctx.stroke();
+      ctx.fillStyle = "#d9a13f";
+      ctx.beginPath();
+      ctx.moveTo(x, GROUND - 19);
+      ctx.lineTo(x + 4, GROUND - 17.7);
+      ctx.lineTo(x, GROUND - 16.4);
+      ctx.closePath();
       ctx.fill();
     }
   }
