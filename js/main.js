@@ -28,7 +28,7 @@
   }
 
   function refresh() {
-    ui.threats = ui.showThreats && !state.gameOver ? computeThreats(state) : null;
+    ui.threats = state.gameOver ? null : computeThreats(state);
     updateHUD(state, ui, undoStack.length > 0);
   }
 
@@ -279,10 +279,6 @@
   document.getElementById("btn-tower").addEventListener("click", () => armPlacement("tower"));
   document.getElementById("btn-farm").addEventListener("click", () => armPlacement("farm"));
   document.getElementById("btn-sell").addEventListener("click", () => armPlacement("sell"));
-  document.getElementById("btn-threats").addEventListener("click", () => {
-    ui.showThreats = !ui.showThreats;
-    refresh();
-  });
   document.getElementById("btn-continue").addEventListener("click", resumeGame);
   document.getElementById("btn-end").addEventListener("click", onEndTurn);
   document.getElementById("btn-undo").addEventListener("click", onUndo);

@@ -7,7 +7,6 @@ function createUI(canvas, renderer, callbacks) {
     selectedUnitKey: null,
     placing: null,             // 'unit' | 'tower' | 'farm' | 'sell'
     highlights: new Map(),     // tile key -> 'move' | 'capture' | 'build'
-    showThreats: false,        // threat-overlay toggle
     threats: null,             // Set of own tile keys the enemy can capture
     recentCaptures: null,      // Map key -> previous owner, from last AI phase
   };
@@ -337,8 +336,6 @@ function updateHUD(state, ui, undoAvailable) {
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-sell").disabled = !canAct ||
     !own.tiles.some(k => sellPrice(state.tiles.get(k)) > 0);
-  btn("btn-threats").disabled = !!state.gameOver;
-  btn("btn-threats").classList.toggle("armed", ui.showThreats);
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;
   document.getElementById("farm-cost").textContent =

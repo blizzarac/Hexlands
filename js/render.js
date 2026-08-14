@@ -136,17 +136,16 @@ function createRenderer(canvas) {
       }
     }
 
-    // Threat overlay: own tiles the enemy could capture next turn
-    if (view.showThreats && view.threats) {
-      ctx.setLineDash([3.5, 3.5]);
+    // Threat marks (always on): own tiles the enemy could capture next turn.
+    // Kept subtle so they read as ambient information, not an alarm.
+    if (view.threats) {
+      ctx.setLineDash([3, 3.5]);
       for (const k of view.threats) {
         const { q, r } = parseKey(k);
         const { x, y } = hexToPixel(q, r, HEX_SIZE);
-        hexPath(x, y, 0.88);
-        ctx.fillStyle = "rgba(220,60,50,0.15)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(230,80,60,0.85)";
-        ctx.lineWidth = 1.6;
+        hexPath(x, y, 0.86);
+        ctx.strokeStyle = "rgba(225,75,60,0.65)";
+        ctx.lineWidth = 1.4;
         ctx.stroke();
       }
       ctx.setLineDash([]);
