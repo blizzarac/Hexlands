@@ -19,14 +19,63 @@
     ui.clearSelection();
     document.getElementById("start-overlay").classList.add("hidden");
     document.getElementById("end-overlay").classList.add("hidden");
+    ui.recentCaptures = null;
     renderer.resize();
     renderer.fitToMap(state);
     startPlayerTurn(state, 0);
+    saveGame();
     refresh();
   }
 
   function refresh() {
+    ui.threats = ui.showThreats && !state.gameOver ? computeThreats(state) : null;
     updateHUD(state, ui, undoStack.length > 0);
+  }
+
+  // --- persistence ---------------------------------------------------------
+  const SAVE_KEY = "hexlands-save-1";
+
+  function saveGame() {
+    try {
+      if (!state || state.gameOver) {
+        localStorage.removeItem(SAVE_KEY);
+      } else {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+          snapshot: snapshotState(state),
+          players: state.players,
+        }));
+      }
+    } catch (e) { /* storage unavailable: play without saves */ }
+    updateContinueButton();
+  }
+
+  function hasSave() {
+    try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
+  }
+
+  function updateContinueButton() {
+    document.getElementById("btn-continue").classList.toggle("hidden", !hasSave());
+  }
+
+  function resumeGame() {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { /* fall through */ }
+    if (!data) { updateContinueButton(); return; }
+    state = {
+      tiles: new Map(), players: data.players, provinces: [],
+      nextProvinceId: 1, currentPlayer: 0, round: 1,
+      mode: "standard", difficulty: "normal", rngState: null,
+      gameOver: null, gameOverReason: null,
+    };
+    restoreState(state, data.snapshot);
+    undoStack = [];
+    ui.clearSelection();
+    ui.recentCaptures = null;
+    document.getElementById("start-overlay").classList.add("hidden");
+    document.getElementById("end-overlay").classList.add("hidden");
+    renderer.resize();
+    renderer.fitToMap(state);
+    refresh();
   }
 
   function attempt(fn) {
@@ -36,6 +85,7 @@
       undoStack.push(snapshot);
       if (undoStack.length > 50) undoStack.shift();
       maybeShowGameOver();
+      saveGame();
     } else if (result.reason) {
       showToast(result.reason);
     }
@@ -136,6 +186,10 @@
     ui.clearSelection();
     undoStack = [];
 
+    // Record the board before the AI phase so their captures can be flagged.
+    const ownerBefore = new Map();
+    for (const [k, t] of state.tiles) ownerBefore.set(k, t.owner);
+
     for (const pl of state.players) {
       if (pl.id === 0 || !playerAlive(state, pl.id)) continue;
       state.currentPlayer = pl.id;
@@ -152,7 +206,15 @@
       startPlayerTurn(state, 0);
       checkGameOver(state);
     }
+
+    ui.recentCaptures = new Map();
+    for (const [k, t] of state.tiles) {
+      const before = ownerBefore.get(k);
+      if (before !== t.owner) ui.recentCaptures.set(k, before);
+    }
+
     maybeShowGameOver();
+    saveGame();
     refresh();
   }
 
@@ -160,6 +222,7 @@
     if (undoStack.length === 0) return;
     restoreState(state, undoStack.pop());
     ui.clearSelection();
+    saveGame();
     refresh();
   }
 
@@ -180,9 +243,18 @@
       state.gameOver === "draw" ? "Draw" : "Defeat";
     text.textContent = (state.gameOverReason || "") + ` (round ${state.round})`;
     overlay.classList.remove("hidden");
+    saveGame(); // clears the save for a finished game
   }
 
-  ui = createUI(canvas, renderer, { onTileClick, onEndTurn, onCancel });
+  function onHover(key, sx, sy) {
+    if (!state || key === null || sx === undefined) {
+      updateTileTooltip(null, null, 0, 0);
+      return;
+    }
+    updateTileTooltip(state, key, sx, sy);
+  }
+
+  ui = createUI(canvas, renderer, { onTileClick, onEndTurn, onCancel, onHover });
 
   document.getElementById("btn-start").addEventListener("click", startGame);
 
@@ -198,6 +270,7 @@
   }
   document.getElementById("opt-mode").addEventListener("change", updateModeUI);
   updateModeUI();
+  updateContinueButton();
   document.getElementById("btn-restart").addEventListener("click", () => {
     document.getElementById("end-overlay").classList.add("hidden");
     document.getElementById("start-overlay").classList.remove("hidden");
@@ -206,6 +279,11 @@
   document.getElementById("btn-tower").addEventListener("click", () => armPlacement("tower"));
   document.getElementById("btn-farm").addEventListener("click", () => armPlacement("farm"));
   document.getElementById("btn-sell").addEventListener("click", () => armPlacement("sell"));
+  document.getElementById("btn-threats").addEventListener("click", () => {
+    ui.showThreats = !ui.showThreats;
+    refresh();
+  });
+  document.getElementById("btn-continue").addEventListener("click", resumeGame);
   document.getElementById("btn-end").addEventListener("click", onEndTurn);
   document.getElementById("btn-undo").addEventListener("click", onUndo);
 

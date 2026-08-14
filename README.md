@@ -91,6 +91,13 @@ Controls: click to select, drag to pan, scroll/pinch to zoom,
 right-click or `Esc` to cancel, `Enter` to end the turn. Undo works for your
 whole turn.
 
+Reading the board: hover any tile for its terrain, defence and contents; the
+**Threats** button marks your tiles the enemy could capture next turn; tiles
+captured during the enemy phase pulse (red if they were yours); and a red `!`
+beside a capital's treasury warns that the province goes bankrupt next round.
+Games auto-save to the browser after every action — the start screen offers
+**Continue** when a saved game exists.
+
 ## Code layout
 
 | File | Responsibility |

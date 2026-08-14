@@ -7,6 +7,9 @@ function createUI(canvas, renderer, callbacks) {
     selectedUnitKey: null,
     placing: null,             // 'unit' | 'tower' | 'farm' | 'sell'
     highlights: new Map(),     // tile key -> 'move' | 'capture' | 'build'
+    showThreats: false,        // threat-overlay toggle
+    threats: null,             // Set of own tile keys the enemy can capture
+    recentCaptures: null,      // Map key -> previous owner, from last AI phase
   };
 
   // --- camera controls -----------------------------------------------------
@@ -16,6 +19,7 @@ function createUI(canvas, renderer, callbacks) {
   let pinchDist = 0;
 
   canvas.addEventListener("pointerdown", e => {
+    callbacks.onHover(null);
     canvas.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -31,7 +35,11 @@ function createUI(canvas, renderer, callbacks) {
 
   canvas.addEventListener("pointermove", e => {
     const p = activePointers.get(e.pointerId);
-    if (!p) return;
+    if (!p) {
+      // plain hover, no buttons down
+      callbacks.onHover(renderer.screenToTileKey(e.clientX, e.clientY), e.clientX, e.clientY);
+      return;
+    }
     p.x = e.clientX;
     p.y = e.clientY;
     if (activePointers.size === 2) {
@@ -83,6 +91,8 @@ function createUI(canvas, renderer, callbacks) {
     e.preventDefault();
     callbacks.onCancel();
   });
+
+  canvas.addEventListener("pointerleave", () => callbacks.onHover(null));
 
   // --- highlight computation ----------------------------------------------
 
@@ -161,6 +171,102 @@ function createUI(canvas, renderer, callbacks) {
   return ui;
 }
 
+// --- tile analysis ----------------------------------------------------------
+
+const UNIT_NAMES = [null, "Peasant", "Spearman", "Knight", "Baron"];
+const TOWER_NAMES = [null, "Watchtower", "Fort", "Castle", "Citadel"];
+const TERRAIN_LABELS = {
+  plains: "Plains · 1 income",
+  meadow: "Meadow · 2 income",
+  hills: "Hills · no income, towers defend +1",
+};
+
+// Every own tile the enemy could capture on their next turn: reachable unit
+// attacks (aura included) plus direct peasant buy-captures.
+function computeThreats(state) {
+  const threats = new Set();
+  for (const p of state.provinces) {
+    if (p.owner === 0) continue;
+    if (p.money >= UNIT_COST) {
+      for (const k of p.tiles) {
+        for (const nk of neighborKeys(k)) {
+          const t = state.tiles.get(nk);
+          if (t && t.owner === 0 && canCapture(state, 1, nk, p.owner)) threats.add(nk);
+        }
+      }
+    }
+    for (const uk of p.tiles) {
+      const t = state.tiles.get(uk);
+      if (!t.unit) continue;
+      const range = moveRange(t.unit);
+      const dist = reachableWithin(state, uk, range);
+      const eff = effectiveUnitLevel(state, uk);
+      for (const [k, d] of dist) {
+        if (d > range - 1) continue;
+        for (const nk of neighborKeys(k)) {
+          const tt = state.tiles.get(nk);
+          if (tt && tt.owner === 0 && canCapture(state, eff, nk, p.owner)) threats.add(nk);
+        }
+      }
+    }
+  }
+  return threats;
+}
+
+function updateTileTooltip(state, key, sx, sy) {
+  const el = document.getElementById("tile-tooltip");
+  const t = state && key ? state.tiles.get(key) : null;
+  if (!t) { el.classList.add("hidden"); return; }
+
+  const rows = [];
+  const ownerName = t.owner === -1 ? "Neutral"
+    : t.owner === 0 ? "You" : state.players[t.owner].name;
+  const ownerColor = t.owner === -1 ? "#b9bfae" : state.players[t.owner].color;
+  rows.push(`<span class="tt-owner" style="color:${ownerColor}">${ownerName}</span>` +
+    ` <span class="tt-dim">— ${TERRAIN_LABELS[t.terrain] || t.terrain}</span>`);
+
+  if (t.tree) rows.push(`Tree <span class="tt-dim">— blocks income; chop for +${TREE_CHOP_REWARD}</span>`);
+  if (t.grave) rows.push(`Gravestone <span class="tt-dim">— sprouts a tree next round</span>`);
+
+  if (t.structure === "capital") {
+    const p = provinceAt(state, key);
+    rows.push(`Capital <span class="tt-dim">— treasury ⬡${p ? p.money : 0}</span>`);
+  } else if (t.structure === "tower") {
+    const l = t.structureLevel || 1;
+    rows.push(`${TOWER_NAMES[l]} <span class="tt-dim">— boost range ${TOWER_AURA_RANGE[l]}</span>`);
+  } else if (t.structure === "farm") {
+    const l = t.structureLevel || 1;
+    const inc = (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) * l;
+    rows.push(`Farm level ${l} <span class="tt-dim">— +${inc} income</span>`);
+  }
+
+  if (t.unit) {
+    const eff = effectiveUnitLevel(state, key);
+    rows.push(`${UNIT_NAMES[t.unit.level]} <span class="tt-dim">— level ${t.unit.level}` +
+      `${eff > t.unit.level ? `, boosted to ${eff}` : ""}` +
+      `${t.unit.moved && t.owner === state.currentPlayer ? ", done this turn" : ""}</span>`);
+  }
+
+  if (t.owner >= 0) {
+    rows.push(`<span class="tt-dim">Defence</span> ${tileDefense(state, key)}`);
+    const p = provinceAt(state, key);
+    if (p && p.owner === 0) {
+      const net = provinceIncome(state, p) - provinceUpkeep(state, p);
+      if (p.money + net < 0) rows.push(`<span class="tt-warn">⚠ Province goes bankrupt next round</span>`);
+    }
+  }
+
+  el.innerHTML = rows.join("<br>");
+  el.classList.remove("hidden");
+  const pad = 14;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  let left = sx + pad, top = sy + pad;
+  if (left + w > window.innerWidth - 8) left = sx - w - pad;
+  if (top + h > window.innerHeight - 8) top = sy - h - pad;
+  el.style.left = left + "px";
+  el.style.top = top + "px";
+}
+
 // --- HUD helpers ------------------------------------------------------------
 
 let toastTimer = null;
@@ -199,7 +305,8 @@ function updateHUD(state, ui, undoAvailable) {
   if (own) {
     const net = provinceIncome(state, own) - provinceUpkeep(state, own);
     moneyEl.textContent = `⬡ ${own.money}`;
-    incomeEl.textContent = `${net >= 0 ? "+" : ""}${net} / round`;
+    incomeEl.textContent = `${net >= 0 ? "+" : ""}${net} / round` +
+      (own.money + net < 0 ? " — ⚠ bankrupt next round!" : "");
     incomeEl.style.color = net >= 0 ? "#9fd89f" : "#e08a8a";
   } else {
     moneyEl.textContent = "—";
@@ -230,6 +337,8 @@ function updateHUD(state, ui, undoAvailable) {
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-sell").disabled = !canAct ||
     !own.tiles.some(k => sellPrice(state.tiles.get(k)) > 0);
+  btn("btn-threats").disabled = !!state.gameOver;
+  btn("btn-threats").classList.toggle("armed", ui.showThreats);
   btn("btn-undo").disabled = !undoAvailable || !!state.gameOver;
   btn("btn-end").disabled = !!state.gameOver;
   document.getElementById("farm-cost").textContent =

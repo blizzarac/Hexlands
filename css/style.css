@@ -145,6 +145,25 @@ button.armed { background: #b07a2c; border-color: #e0b06a; }
   line-height: 1.45;
 }
 .panel label.hidden { display: none; }
+.panel button.hidden { display: none; }
+
+#tile-tooltip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  background: rgba(14, 19, 27, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  max-width: 230px;
+  color: #dde5ee;
+}
+#tile-tooltip.hidden { display: none; }
+#tile-tooltip .tt-owner { font-weight: 600; }
+#tile-tooltip .tt-dim { color: #9fb0c2; }
+#tile-tooltip .tt-warn { color: #e08a8a; }
 .panel label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
 .panel select {
   padding: 6px 10px;

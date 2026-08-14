@@ -136,6 +136,38 @@ function createRenderer(canvas) {
       }
     }
 
+    // Threat overlay: own tiles the enemy could capture next turn
+    if (view.showThreats && view.threats) {
+      ctx.setLineDash([3.5, 3.5]);
+      for (const k of view.threats) {
+        const { q, r } = parseKey(k);
+        const { x, y } = hexToPixel(q, r, HEX_SIZE);
+        hexPath(x, y, 0.88);
+        ctx.fillStyle = "rgba(220,60,50,0.15)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(230,80,60,0.85)";
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
+    // Tiles that changed hands during the last AI phase pulse briefly-forever
+    // until the next end of turn; tiles YOU lost pulse red, others white.
+    if (view.recentCaptures && view.recentCaptures.size) {
+      const pulse = 0.45 + 0.35 * Math.sin(performance.now() / 280);
+      for (const [k, prevOwner] of view.recentCaptures) {
+        const { q, r } = parseKey(k);
+        const { x, y } = hexToPixel(q, r, HEX_SIZE);
+        hexPath(x, y, 0.9);
+        ctx.strokeStyle = prevOwner === 0
+          ? `rgba(255,80,60,${pulse})`
+          : `rgba(255,255,255,${pulse * 0.8})`;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+      }
+    }
+
     // Move/build target highlights
     if (view.highlights) {
       for (const [k, kind] of view.highlights) {
@@ -197,7 +229,8 @@ function createRenderer(canvas) {
       ctx.setLineDash([]);
     }
 
-    // Treasury labels on capitals
+    // Treasury labels on capitals; own provinces headed for bankruptcy get a
+    // red warning marker.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const p of state.provinces) {
@@ -210,6 +243,20 @@ function createRenderer(canvas) {
       ctx.strokeText(label, x, y - HEX_SIZE * 0.72);
       ctx.fillStyle = "#ffe9a8";
       ctx.fillText(label, x, y - HEX_SIZE * 0.72);
+      if (p.owner === 0 &&
+          p.money + provinceIncome(state, p) - provinceUpkeep(state, p) < 0) {
+        const wx = x - 8 - 4 * String(p.money).length, wy = y - HEX_SIZE * 0.72;
+        ctx.beginPath();
+        ctx.arc(wx, wy, 5.4, 0, Math.PI * 2);
+        ctx.fillStyle = "#c43a30";
+        ctx.fill();
+        ctx.strokeStyle = "#5e1712";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = "#ffe9a8";
+        ctx.font = "bold 8.5px system-ui, sans-serif";
+        ctx.fillText("!", wx, wy + 0.5);
+      }
     }
   }
 
