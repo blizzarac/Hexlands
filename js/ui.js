@@ -276,6 +276,22 @@ function updateTileTooltip(state, key, sx, sy) {
   el.style.top = top + "px";
 }
 
+// Plain-language landmark explanation, used as a toast when one is clicked.
+function landmarkDescription(tile) {
+  if (tile.landmark === "mine") {
+    return `⛏ Mine — pays +${MINE_INCOME} income every round to whoever holds this tile.`;
+  }
+  if (tile.landmark === "village") {
+    return tile.landmarkUsed
+      ? "Village — already plundered; it's just scorched ground now."
+      : `Village — the first player to capture it plunders +${VILLAGE_PLUNDER} coins.`;
+  }
+  if (tile.landmark === "fort") {
+    return `Ancient fort — while held, it defends this tile and its neighbours at level ${ANCIENT_FORT_DEFENSE}. It can't be built on and survives capture.`;
+  }
+  return null;
+}
+
 // --- HUD helpers ------------------------------------------------------------
 
 let toastTimer = null;

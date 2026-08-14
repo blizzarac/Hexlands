@@ -326,73 +326,120 @@ function createRenderer(canvas) {
     }
   }
 
-  // A village: two small huts; plundered villages are charred and roofless.
+  // A village: a hamlet of thatched round huts (straw roofs distinguish it
+  // from red-roofed farms). Plundered villages are charred, roofless shells.
   function drawVillage(x, y, plundered) {
     const G = y + 7.5;
-    ctx.lineWidth = 1;
-    const hut = (bx, w, h, roofH) => {
-      ctx.fillStyle = plundered ? "#57514b" : "#d8c9a3";
+    const hut = (bx, base, w, h, withDoor) => {
+      ctx.lineWidth = 1;
+      ctx.fillStyle = plundered ? "#4e4842" : "#e3d6b0";
       ctx.strokeStyle = "#3a352c";
-      ctx.beginPath(); ctx.rect(bx - w / 2, G - h, w, h); ctx.fill(); ctx.stroke();
-      if (!plundered) {
-        ctx.fillStyle = "#8a6b43";
+      ctx.beginPath(); ctx.rect(bx - w / 2, base - h, w, h); ctx.fill(); ctx.stroke();
+      if (plundered) {
+        // jagged charred top
+        ctx.fillStyle = "#241f1a";
         ctx.beginPath();
-        ctx.moveTo(bx - w / 2 - 1.2, G - h);
-        ctx.lineTo(bx, G - h - roofH);
-        ctx.lineTo(bx + w / 2 + 1.2, G - h);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.moveTo(bx - w / 2, base - h);
+        ctx.lineTo(bx - w * 0.2, base - h + 1.6);
+        ctx.lineTo(bx + w * 0.15, base - h);
+        ctx.lineTo(bx + w / 2, base - h + 1.4);
+        ctx.lineTo(bx + w / 2, base - h + 2.2);
+        ctx.lineTo(bx - w / 2, base - h + 2.2);
+        ctx.closePath(); ctx.fill();
       } else {
-        // broken wall notch
-        ctx.fillStyle = "#2c2823";
-        ctx.fillRect(bx - w * 0.2, G - h, w * 0.4, 1.8);
+        // tall conical thatch roof with a generous overhang
+        ctx.fillStyle = "#d9b95c";
+        ctx.strokeStyle = "#8a6b2c";
+        ctx.beginPath();
+        ctx.moveTo(bx - w / 2 - 2, base - h);
+        ctx.lineTo(bx, base - h - w * 0.85);
+        ctx.lineTo(bx + w / 2 + 2, base - h);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      if (withDoor && !plundered) {
+        ctx.fillStyle = "#5b4225";
+        ctx.fillRect(bx - 1.1, base - 3, 2.2, 3);
       }
     };
-    hut(x - 4.2, 6.5, 5.5, 3.6);
-    hut(x + 4.4, 5.5, 4.5, 3);
+    hut(x + 4.6, G - 2.5, 5, 4, false);  // back hut, higher on the tile
+    hut(x - 4.6, G, 5.5, 4.5, false);
+    hut(x + 0.6, G, 6.5, 5, true);       // front hut with door
     if (plundered) {
-      ctx.strokeStyle = "rgba(60,55,50,0.8)"; // smoke wisp
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "rgba(90,84,78,0.9)"; // smoke wisps
+      ctx.lineWidth = 1.3;
       ctx.beginPath();
-      ctx.moveTo(x - 4, G - 7);
-      ctx.quadraticCurveTo(x - 6, G - 10, x - 4.5, G - 12.5);
+      ctx.moveTo(x - 4.6, G - 7);
+      ctx.quadraticCurveTo(x - 6.6, G - 10.5, x - 5, G - 13.5);
+      ctx.moveTo(x + 1, G - 7.5);
+      ctx.quadraticCurveTo(x - 0.8, G - 10.5, x + 0.8, G - 13);
       ctx.stroke();
     }
   }
 
-  // An ancient fort: a broken crenellated ruin with cracks and moss.
+  // An ancient fort: a ruined castle tower — crenellated top on the standing
+  // half, a collapsed wall stub, and rubble at its foot.
   function drawAncientFort(x, y) {
     const G = y + 7.5;
-    ctx.fillStyle = "#8d9188";
-    ctx.strokeStyle = "#3b3f38";
+    const stone = "#8d9188";
+    const dark = "#3b3f38";
     ctx.lineWidth = 1.2;
+    // standing tower, clearly castle-like: body + two merlons
+    ctx.fillStyle = stone;
+    ctx.strokeStyle = dark;
     ctx.beginPath();
-    ctx.moveTo(x - 6, G);
-    ctx.lineTo(x - 6, G - 9);
-    ctx.lineTo(x - 3.6, G - 9);
-    ctx.lineTo(x - 3.6, G - 11.4);
-    ctx.lineTo(x - 1.2, G - 11.4);
-    ctx.lineTo(x - 1.2, G - 9);
-    ctx.lineTo(x + 1.6, G - 9);
-    ctx.lineTo(x + 3, G - 6.2);   // broken jagged edge
-    ctx.lineTo(x + 6, G - 5);
-    ctx.lineTo(x + 6, G);
+    ctx.moveTo(x - 6.5, G);
+    ctx.lineTo(x - 6.5, G - 11);
+    ctx.lineTo(x - 5.4, G - 11);
+    ctx.lineTo(x - 5.4, G - 13.2);
+    ctx.lineTo(x - 3.4, G - 13.2);
+    ctx.lineTo(x - 3.4, G - 11);
+    ctx.lineTo(x - 2.2, G - 11);
+    ctx.lineTo(x - 2.2, G - 13.2);
+    ctx.lineTo(x - 0.4, G - 13.2);
+    ctx.lineTo(x - 0.4, G - 11);
+    ctx.lineTo(x + 0.6, G - 11);
+    ctx.lineTo(x + 0.6, G);      // right side of tower
     ctx.closePath();
     ctx.fill(); ctx.stroke();
-    // cracks
-    ctx.strokeStyle = "rgba(40,44,38,0.7)";
-    ctx.lineWidth = 0.8;
+    // arched doorway
+    ctx.fillStyle = "#241f1a";
     ctx.beginPath();
-    ctx.moveTo(x - 1, G - 1);
-    ctx.lineTo(x + 0.6, G - 4.4);
-    ctx.lineTo(x - 0.6, G - 6.8);
-    ctx.moveTo(x + 3.4, G - 1);
-    ctx.lineTo(x + 4.4, G - 3.6);
-    ctx.stroke();
-    // moss
-    ctx.fillStyle = "#4d7a44";
-    for (const [dx, dy] of [[-5, -0.8], [5, -0.8], [-3.2, -8.4]]) {
+    ctx.moveTo(x - 4.6, G);
+    ctx.lineTo(x - 4.6, G - 3);
+    ctx.arc(x - 3, G - 3, 1.6, Math.PI, 0);
+    ctx.lineTo(x - 1.4, G);
+    ctx.closePath();
+    ctx.fill();
+    // collapsed wall stub, stepping down to rubble
+    ctx.fillStyle = stone;
+    ctx.strokeStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(x + 0.6, G);
+    ctx.lineTo(x + 0.6, G - 7);
+    ctx.lineTo(x + 3, G - 6);
+    ctx.lineTo(x + 4, G - 3.6);
+    ctx.lineTo(x + 6.2, G - 2.8);
+    ctx.lineTo(x + 6.2, G);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // rubble blocks
+    ctx.fillStyle = "#7c817a";
+    for (const [dx, w] of [[7.6, 2.2], [5.4, 1.7]]) {
       ctx.beginPath();
-      ctx.arc(x + dx, G + dy, 1.3, 0, Math.PI * 2);
+      ctx.rect(x + dx - w / 2, G - w * 0.8, w, w * 0.8);
+      ctx.fill(); ctx.stroke();
+    }
+    // masonry hints + moss
+    ctx.strokeStyle = "rgba(40,44,38,0.4)";
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, G - 4); ctx.lineTo(x + 0.2, G - 4);
+    ctx.moveTo(x - 6, G - 8); ctx.lineTo(x + 0.2, G - 8);
+    ctx.stroke();
+    ctx.fillStyle = "#4d7a44";
+    for (const [dx, dy] of [[-6, -1], [1.4, -5.8], [5.8, -0.6]]) {
+      ctx.beginPath();
+      ctx.arc(x + dx, G + dy, 1.2, 0, Math.PI * 2);
       ctx.fill();
     }
   }

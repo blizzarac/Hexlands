@@ -96,6 +96,12 @@
     if (!state || state.gameOver || state.currentPlayer !== 0) return;
     const tile = state.tiles.get(key);
 
+    // Clicking a landmark always explains it (hover isn't available on touch).
+    if (tile && tile.landmark) {
+      const desc = landmarkDescription(tile);
+      if (desc) showToast(desc, 3500);
+    }
+
     // Placement mode: try to place the armed purchase.
     if (ui.placing && ui.selectedProvinceKey) {
       const province = provinceAt(state, ui.selectedProvinceKey);
