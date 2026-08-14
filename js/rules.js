@@ -386,14 +386,60 @@ function playerAlive(state, player) {
   return state.provinces.some(p => p.owner === player);
 }
 
+const DOMINATION_RATIO = 0.65;      // free-for-all: control 65% of the island
+const DUEL_DOMINATION_RATIO = 0.60; // duel: 60%
+const DUEL_ROUND_LIMIT = 60;        // duel: after round 60, most tiles wins
+
 function checkGameOver(state) {
   if (state.gameOver) return;
   if (!playerAlive(state, 0)) {
     state.gameOver = "defeat";
+    state.gameOverReason = "Your last province has fallen.";
     return;
   }
   const enemiesAlive = state.players.some(pl => pl.id !== 0 && playerAlive(state, pl.id));
-  if (!enemiesAlive) state.gameOver = "victory";
+  if (!enemiesAlive) {
+    state.gameOver = "victory";
+    state.gameOverReason = "Every enemy province has been destroyed.";
+    return;
+  }
+
+  // Domination: once someone controls most of the island the outcome is
+  // decided — end the game instead of dragging through the mop-up.
+  const ratio = state.mode === "duel" ? DUEL_DOMINATION_RATIO : DOMINATION_RATIO;
+  const counts = new Map();
+  for (const t of state.tiles.values()) {
+    if (t.owner >= 0) counts.set(t.owner, (counts.get(t.owner) || 0) + 1);
+  }
+  const total = state.tiles.size;
+  for (const [owner, n] of counts) {
+    if (n / total < ratio) continue;
+    const pct = Math.round(n / total * 100);
+    if (owner === 0) {
+      state.gameOver = "victory";
+      state.gameOverReason = `You control ${pct}% of the island — domination!`;
+    } else {
+      state.gameOver = "defeat";
+      state.gameOverReason = `${state.players[owner].name} controls ${pct}% of the island.`;
+    }
+    return;
+  }
+
+  // Duel time limit: when it expires, the larger realm takes the match.
+  if (state.mode === "duel" && state.round > DUEL_ROUND_LIMIT) {
+    const mine = counts.get(0) || 0;
+    const theirs = counts.get(1) || 0;
+    if (mine > theirs) {
+      state.gameOver = "victory";
+      state.gameOverReason = `Round limit reached — you hold ${mine} tiles to ${theirs}.`;
+    } else if (theirs > mine) {
+      state.gameOver = "defeat";
+      state.gameOverReason = `Round limit reached — the enemy holds ${theirs} tiles to ${mine}.`;
+    } else {
+      state.gameOver = "draw";
+      state.gameOverReason = `Round limit reached at ${mine} tiles apiece — a draw.`;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -633,6 +679,7 @@ function snapshotState(state) {
     difficulty: state.difficulty,
     rngState: state.rngState,
     gameOver: state.gameOver,
+    gameOverReason: state.gameOverReason,
   });
 }
 
@@ -647,4 +694,5 @@ function restoreState(state, snapshot) {
   state.difficulty = data.difficulty;
   state.rngState = data.rngState;
   state.gameOver = data.gameOver;
+  state.gameOverReason = data.gameOverReason;
 }

@@ -175,13 +175,10 @@
     const overlay = document.getElementById("end-overlay");
     const title = document.getElementById("end-title");
     const text = document.getElementById("end-text");
-    if (state.gameOver === "victory") {
-      title.textContent = "Victory!";
-      text.textContent = `You conquered the island in ${state.round} rounds.`;
-    } else {
-      title.textContent = "Defeat";
-      text.textContent = "Your last province has fallen.";
-    }
+    title.textContent =
+      state.gameOver === "victory" ? "Victory!" :
+      state.gameOver === "draw" ? "Draw" : "Defeat";
+    text.textContent = (state.gameOverReason || "") + ` (round ${state.round})`;
     overlay.classList.remove("hidden");
   }
 

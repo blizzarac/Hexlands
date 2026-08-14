@@ -14,7 +14,10 @@ python3 -m http.server 8000
 
 ## How to play
 
-You are **blue**. Destroy every enemy province to win.
+You are **blue**. Win by destroying every enemy province or by **domination**
+— controlling 65% of the island (60% in duel mode). Duels additionally end
+after round 60, with the larger realm taking the match (equal tiles is a
+draw).
 
 Two modes:
 

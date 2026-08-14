@@ -173,7 +173,9 @@ function showToast(text, ms = 2200) {
 }
 
 function updateHUD(state, ui, undoAvailable) {
-  document.getElementById("round-label").textContent = `Round ${state.round}`;
+  document.getElementById("round-label").textContent = state.mode === "duel"
+    ? `Round ${state.round} / ${DUEL_ROUND_LIMIT}`
+    : `Round ${state.round}`;
 
   const chips = document.getElementById("player-chips");
   chips.innerHTML = "";
