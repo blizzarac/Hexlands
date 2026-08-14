@@ -122,6 +122,9 @@ function targetValue(state, key, player, diff, style) {
   const t = state.tiles.get(key);
   let value = t.owner === -1 ? style.neutralValue : style.enemyValue;
   value += ((TERRAIN_INCOME[t.terrain] ?? 1) - 1) * 1.5; // meadows tempt, hills bore
+  if (t.landmark === "mine") value += 4;
+  else if (t.landmark === "village" && !t.landmarkUsed) value += 3;
+  else if (t.landmark === "fort") value += 3;
   if (t.structure === "capital") value += 12 * style.structureMult;
   else if (t.structure === "tower") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
   else if (t.structure === "farm") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;

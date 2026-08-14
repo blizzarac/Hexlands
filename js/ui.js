@@ -227,6 +227,16 @@ function updateTileTooltip(state, key, sx, sy) {
   if (t.tree) rows.push(`Tree <span class="tt-dim">— blocks income; chop for +${TREE_CHOP_REWARD}</span>`);
   if (t.grave) rows.push(`Gravestone <span class="tt-dim">— sprouts a tree next round</span>`);
 
+  if (t.landmark === "mine") {
+    rows.push(`Mine <span class="tt-dim">— +${MINE_INCOME} income to whoever holds it</span>`);
+  } else if (t.landmark === "village") {
+    rows.push(t.landmarkUsed
+      ? `Village <span class="tt-dim">— already plundered</span>`
+      : `Village <span class="tt-dim">— +${VILLAGE_PLUNDER} plunder on first capture</span>`);
+  } else if (t.landmark === "fort") {
+    rows.push(`Ancient fort <span class="tt-dim">— defends at ${ANCIENT_FORT_DEFENSE} while held; can't be built on</span>`);
+  }
+
   if (t.structure === "capital") {
     const p = provinceAt(state, key);
     rows.push(`Capital <span class="tt-dim">— treasury ⬡${p ? p.money : 0}</span>`);

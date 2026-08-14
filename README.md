@@ -40,6 +40,12 @@ Two modes:
 - **Income**: a farm adds 4 per farm level on top of terrain income — 6 per
   level on meadows, so a level-3 meadow farm earns 20 a round (2 base + 18).
   Tiles covered by trees or gravestones earn nothing.
+- **Landmarks** (map objectives; nothing can be built on them, trees avoid
+  them, and duel maps mirror them): **mines** pay +3 income to whoever holds
+  them and prefer hills; **villages** yield a one-time +12 plunder to their
+  first captor, then burn; **ancient forts** defend their tile and
+  neighbours at level 2 while held — permanent strongpoints that survive
+  capture.
 - **Units** (levels 1–4) cost 10 coins and upkeep of 2 / 6 / 18 / 36 per round.
   If a province's treasury goes negative, all of its units starve.
 - **Movement**: a unit moves up to its level in tiles per turn (peasant 1,

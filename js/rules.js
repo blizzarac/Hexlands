@@ -24,6 +24,9 @@ const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
 const TREE_CHOP_REWARD = 3;
 const TERRAIN_INCOME = { plains: 1, meadow: 2, hills: 0 };
 const HILL_TOWER_BONUS = 1; // towers/forts built on hills defend one level higher
+const MINE_INCOME = 3;           // while held
+const VILLAGE_PLUNDER = 12;      // one-time, first capture only
+const ANCIENT_FORT_DEFENSE = 2;  // while held; defends tile + neighbours
 const TREE_SPREAD_CHANCE = 0.10; // per tree per round, one random neighbour
 const START_MONEY = 10;
 const MAX_UNIT_LEVEL = 4;
@@ -182,6 +185,7 @@ function pickCapitalTile(state, comp) {
     let score = 0;
     if (!t.structure) score += 100; else if (t.structure === "farm") score += 10;
     if (!t.unit) score += 50;
+    if (t.landmark) score -= 40; // keep capitals off mines and ruins
     for (const nk of neighborKeys(k)) {
       const nt = state.tiles.get(nk);
       if (nt && nt.owner === t.owner) score += 1; // prefer interior tiles
@@ -205,6 +209,7 @@ function provinceIncome(state, p) {
     const t = state.tiles.get(k);
     if (t.tree || t.grave) continue;
     income += TERRAIN_INCOME[t.terrain] ?? 1;
+    if (t.landmark === "mine") income += MINE_INCOME;
     if (t.structure === "farm") {
       income += (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) * (t.structureLevel || 1);
     }
@@ -273,6 +278,7 @@ function tileDefense(state, key) {
     const tt = state.tiles.get(k);
     if (!tt || tt.owner !== t.owner) return;
     if (tt.unit) d = Math.max(d, effectiveUnitLevel(state, k));
+    if (tt.landmark === "fort") d = Math.max(d, ANCIENT_FORT_DEFENSE);
     if (tt.structure === "capital") d = Math.max(d, 1);
     if (tt.structure === "tower") {
       const sd = TOWER_DEFENSE[tt.structureLevel || 1] +
@@ -373,7 +379,7 @@ function growTrees(state) {
     const neigh = neighborKeys(k);
     const nk = neigh[Math.floor(rand(state) * neigh.length)];
     const nt = state.tiles.get(nk);
-    if (!nt || nt.tree || nt.unit || nt.structure || nt.grave) continue;
+    if (!nt || nt.tree || nt.unit || nt.structure || nt.grave || nt.landmark) continue;
     sprouts.push([nk, t.tree]);
   }
   for (const [k, kind] of sprouts) {
@@ -500,9 +506,19 @@ function moveUnit(state, fromKey, toKey) {
   dest.tree = null;
   dest.grave = false;
   unit.moved = true;
+  plunderVillage(state, dest, province);
   recomputeProvinces(state);
   checkGameOver(state);
   return { ok: true };
+}
+
+// Called with the capturing province BEFORE provinces are recomputed, so the
+// plunder lands in the treasury that made the capture.
+function plunderVillage(state, tile, province) {
+  if (tile.landmark === "village" && !tile.landmarkUsed) {
+    tile.landmarkUsed = true;
+    province.money += VILLAGE_PLUNDER;
+  }
 }
 
 function buyUnit(state, provinceCapital, targetKey) {
@@ -546,6 +562,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   dest.structureLevel = null;
   dest.tree = null;
   dest.grave = false;
+  plunderVillage(state, dest, province);
   recomputeProvinces(state);
   checkGameOver(state);
   return { ok: true };
@@ -571,6 +588,7 @@ function buyTower(state, provinceCapital, targetKey) {
   }
 
   if (province.money < TOWER_COST) return { ok: false, reason: "Not enough money" };
+  if (dest.landmark) return { ok: false, reason: "Can't build on a landmark" };
   if (dest.unit || dest.structure || dest.tree || dest.grave) {
     return { ok: false, reason: "Tile must be empty" };
   }
@@ -584,6 +602,7 @@ function canPlaceFarm(state, province, key) {
   const t = state.tiles.get(key);
   if (!t || !province.tiles.includes(key)) return false;
   if (t.terrain === "hills") return false; // too rocky to farm
+  if (t.landmark) return false;
   if (t.unit || t.structure || t.tree || t.grave) return false;
   return neighborKeys(key).some(nk => {
     const nt = state.tiles.get(nk);

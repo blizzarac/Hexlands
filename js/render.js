@@ -199,8 +199,11 @@ function createRenderer(canvas) {
     // Objects
     for (const [k, t] of state.tiles) {
       const { x, y } = hexToPixel(t.q, t.r, HEX_SIZE);
-      if (t.terrain === "hills") drawHills(x, y);
-      else if (t.terrain === "meadow" && !t.structure && !t.unit) drawMeadow(x, y);
+      if (t.terrain === "hills" && !t.landmark) drawHills(x, y);
+      else if (t.terrain === "meadow" && !t.structure && !t.unit && !t.landmark) drawMeadow(x, y);
+      if (t.landmark === "mine") drawMine(x, y);
+      else if (t.landmark === "village") drawVillage(x, y, t.landmarkUsed);
+      else if (t.landmark === "fort") drawAncientFort(x, y);
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
       if (t.structure === "capital") {
@@ -283,6 +286,114 @@ function createRenderer(canvas) {
       ctx.moveTo(x + dx, y + dy);
       ctx.lineTo(x + dx + 1.5, y + dy - 3);
       ctx.stroke();
+    }
+  }
+
+  // A mine: rocky mound with a dark timber-framed entrance and gold flecks.
+  function drawMine(x, y) {
+    const G = y + 7.5;
+    ctx.fillStyle = "#78726a";
+    ctx.strokeStyle = "#38342e";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 9, G);
+    ctx.quadraticCurveTo(x - 5, G - 10, x, G - 10.5);
+    ctx.quadraticCurveTo(x + 6, G - 10, x + 9, G);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // entrance with beams
+    ctx.fillStyle = "#241f1a";
+    ctx.beginPath();
+    ctx.moveTo(x - 3, G);
+    ctx.lineTo(x - 3, G - 4);
+    ctx.arc(x, G - 4, 3, Math.PI, 0);
+    ctx.lineTo(x + 3, G);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#7a5230";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x - 3.6, G); ctx.lineTo(x - 3.6, G - 5);
+    ctx.moveTo(x + 3.6, G); ctx.lineTo(x + 3.6, G - 5);
+    ctx.moveTo(x - 4.4, G - 5.4); ctx.lineTo(x + 4.4, G - 5.4);
+    ctx.stroke();
+    // gold flecks
+    ctx.fillStyle = "#ffd24a";
+    for (const [dx, dy] of [[-6, -3], [5.5, -4], [-1, -8]]) {
+      ctx.beginPath();
+      ctx.arc(x + dx, G + dy, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // A village: two small huts; plundered villages are charred and roofless.
+  function drawVillage(x, y, plundered) {
+    const G = y + 7.5;
+    ctx.lineWidth = 1;
+    const hut = (bx, w, h, roofH) => {
+      ctx.fillStyle = plundered ? "#57514b" : "#d8c9a3";
+      ctx.strokeStyle = "#3a352c";
+      ctx.beginPath(); ctx.rect(bx - w / 2, G - h, w, h); ctx.fill(); ctx.stroke();
+      if (!plundered) {
+        ctx.fillStyle = "#8a6b43";
+        ctx.beginPath();
+        ctx.moveTo(bx - w / 2 - 1.2, G - h);
+        ctx.lineTo(bx, G - h - roofH);
+        ctx.lineTo(bx + w / 2 + 1.2, G - h);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else {
+        // broken wall notch
+        ctx.fillStyle = "#2c2823";
+        ctx.fillRect(bx - w * 0.2, G - h, w * 0.4, 1.8);
+      }
+    };
+    hut(x - 4.2, 6.5, 5.5, 3.6);
+    hut(x + 4.4, 5.5, 4.5, 3);
+    if (plundered) {
+      ctx.strokeStyle = "rgba(60,55,50,0.8)"; // smoke wisp
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x - 4, G - 7);
+      ctx.quadraticCurveTo(x - 6, G - 10, x - 4.5, G - 12.5);
+      ctx.stroke();
+    }
+  }
+
+  // An ancient fort: a broken crenellated ruin with cracks and moss.
+  function drawAncientFort(x, y) {
+    const G = y + 7.5;
+    ctx.fillStyle = "#8d9188";
+    ctx.strokeStyle = "#3b3f38";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, G);
+    ctx.lineTo(x - 6, G - 9);
+    ctx.lineTo(x - 3.6, G - 9);
+    ctx.lineTo(x - 3.6, G - 11.4);
+    ctx.lineTo(x - 1.2, G - 11.4);
+    ctx.lineTo(x - 1.2, G - 9);
+    ctx.lineTo(x + 1.6, G - 9);
+    ctx.lineTo(x + 3, G - 6.2);   // broken jagged edge
+    ctx.lineTo(x + 6, G - 5);
+    ctx.lineTo(x + 6, G);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // cracks
+    ctx.strokeStyle = "rgba(40,44,38,0.7)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x - 1, G - 1);
+    ctx.lineTo(x + 0.6, G - 4.4);
+    ctx.lineTo(x - 0.6, G - 6.8);
+    ctx.moveTo(x + 3.4, G - 1);
+    ctx.lineTo(x + 4.4, G - 3.6);
+    ctx.stroke();
+    // moss
+    ctx.fillStyle = "#4d7a44";
+    for (const [dx, dy] of [[-5, -0.8], [5, -0.8], [-3.2, -8.4]]) {
+      ctx.beginPath();
+      ctx.arc(x + dx, G + dy, 1.3, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 

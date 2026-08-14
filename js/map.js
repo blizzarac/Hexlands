@@ -11,6 +11,8 @@ function makeTileFactory(tiles) {
       unit: null,           // { level, moved }
       structure: null,      // 'capital' | 'tower' | 'farm'
       structureLevel: null, // tower 1-4, farm 1-3; null for capital
+      landmark: null,       // 'mine' | 'village' | 'fort'
+      landmarkUsed: false,  // village already plundered
       tree: null,           // 'pine' | 'palm'
       grave: false,
     });
@@ -57,6 +59,7 @@ function generateMap(tileCount, playerCount) {
   growBlob(tiles, tileCount, Math.random, false);
   paintTerrain(tiles, Math.random);
   placeStartingProvinces(tiles, playerCount);
+  placeLandmarks(tiles, Math.random);
   sprinkleTrees(tiles, Math.random);
   return tiles;
 }
@@ -69,9 +72,45 @@ function generateDuelMap(tileCount, rng) {
   paintTerrain(tiles, rng);
   mirrorField(tiles, "terrain");
   placeDuelStarts(tiles);
+  placeLandmarks(tiles, rng);
+  mirrorField(tiles, "landmark");
   sprinkleTrees(tiles, rng);
   mirrorField(tiles, "tree");
   return tiles;
+}
+
+// Landmarks: mines (+income, prefer hills), villages (one-time plunder,
+// prefer plains) and ancient forts (defensive strongpoints). Kept away from
+// capitals and from each other.
+function placeLandmarks(tiles, rng) {
+  const capitals = [];
+  for (const [k, t] of tiles) if (t.structure === "capital") capitals.push(k);
+  const taken = [];
+  const usable = k => {
+    const t = tiles.get(k);
+    if (!t || t.owner !== -1 || t.structure || t.landmark) return false;
+    if (capitals.some(c => hexDistance(k, c) < 4)) return false;
+    if (taken.some(o => hexDistance(k, o) < 3)) return false;
+    return true;
+  };
+  const place = (type, count, preferTerrain) => {
+    const keys = [...tiles.keys()];
+    for (let n = 0; n < count; n++) {
+      const preferred = keys.filter(k =>
+        usable(k) && (!preferTerrain || tiles.get(k).terrain === preferTerrain));
+      const pool = preferred.length ? preferred : keys.filter(usable);
+      if (pool.length === 0) return;
+      const k = pool[Math.floor(rng() * pool.length)];
+      const t = tiles.get(k);
+      t.landmark = type;
+      t.landmarkUsed = false;
+      t.tree = null;
+      taken.push(k);
+    }
+  };
+  place("mine", Math.max(1, Math.round(tiles.size / 90)), "hills");
+  place("village", Math.max(1, Math.round(tiles.size / 80)), "plains");
+  place("fort", Math.max(1, Math.round(tiles.size / 130)), null);
 }
 
 // Copy a field from the canonical half of the map onto the mirrored half.
@@ -188,7 +227,7 @@ function placeDuelStarts(tiles) {
 
 function sprinkleTrees(tiles, rng) {
   for (const [k, t] of tiles) {
-    if (t.owner !== -1 || t.structure) continue;
+    if (t.owner !== -1 || t.structure || t.landmark) continue;
     if (rng() < 0.10) {
       const coastal = neighborKeys(k).some(nk => !tiles.has(nk));
       t.tree = coastal ? "palm" : "pine";
