@@ -138,6 +138,13 @@ button.armed { background: #b07a2c; border-color: #e0b06a; }
 
 .panel h1 { font-size: 30px; }
 .panel .subtitle { color: #aab8c8; margin-top: -8px; }
+.panel #mode-desc {
+  font-size: 13px;
+  color: #9fb0c2;
+  margin-top: -6px;
+  line-height: 1.45;
+}
+.panel label.hidden { display: none; }
 .panel label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
 .panel select {
   padding: 6px 10px;

@@ -188,11 +188,19 @@
   ui = createUI(canvas, renderer, { onTileClick, onEndTurn, onCancel });
 
   document.getElementById("btn-start").addEventListener("click", startGame);
-  document.getElementById("opt-mode").addEventListener("change", e => {
-    const duel = e.target.value === "duel";
-    document.getElementById("opt-size").disabled = duel;
-    document.getElementById("opt-ai").disabled = duel;
-  });
+
+  function updateModeUI() {
+    const duel = document.getElementById("opt-mode").value === "duel";
+    document.getElementById("row-size").classList.toggle("hidden", duel);
+    document.getElementById("row-ai").classList.toggle("hidden", duel);
+    document.getElementById("mode-desc").textContent = duel
+      ? "One fixed, mirror-symmetric map against a single Balanced opponent. " +
+        "No randomness anywhere — identical play gives identical games, so " +
+        "strategies can be studied like chess lines."
+      : "Conquer a random island against AI opponents with random personalities.";
+  }
+  document.getElementById("opt-mode").addEventListener("change", updateModeUI);
+  updateModeUI();
   document.getElementById("btn-restart").addEventListener("click", () => {
     document.getElementById("end-overlay").classList.add("hidden");
     document.getElementById("start-overlay").classList.remove("hidden");
