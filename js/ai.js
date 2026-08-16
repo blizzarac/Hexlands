@@ -144,6 +144,11 @@ function targetValue(state, key, player, diff, style) {
   if (t.landmark === "mine") value += 4;
   else if (t.landmark === "village" && !t.landmarkUsed) value += 3;
   else if (t.landmark === "fort") value += 3;
+  else if (t.landmark === "throne") {
+    // The duel's central objective; contesting it grows urgent as the
+    // holder's crown clock runs.
+    value += 8 + (t.owner !== player && t.owner >= 0 ? state.throneHeldRounds : 0);
+  }
   if (t.structure === "capital") value += 12 * style.structureMult;
   else if (t.structure === "tower") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
   else if (t.structure === "farm") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;

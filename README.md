@@ -29,6 +29,10 @@ Two modes:
   stored in the game state, so identical play always produces an identical
   game — openings and strategies can be developed like chess lines. Undo
   preserves the random stream, so it can't be used to reroll outcomes.
+  At the exact centre of the map stands **the Throne**: +4 income while
+  held, and holding it for 10 consecutive rounds wins the duel outright.
+  It has no defence of its own, so the crown clock (shown in the top bar)
+  forces both sides to fight for the middle.
 
 - **Provinces** are connected groups of 2+ tiles of one colour. Each province has
   its own treasury, shown above its capital — a small walled town flying

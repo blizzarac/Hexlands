@@ -74,6 +74,13 @@ function generateDuelMap(tileCount, rng) {
   placeDuelStarts(tiles);
   placeLandmarks(tiles, rng);
   mirrorField(tiles, "landmark");
+  // The Throne sits at the exact centre — its own mirror point, equidistant
+  // from both capitals.
+  const centre = tiles.get(keyOf(0, 0));
+  centre.landmark = "throne";
+  centre.landmarkUsed = false;
+  centre.terrain = "plains";
+  centre.tree = null;
   sprinkleTrees(tiles, rng);
   mirrorField(tiles, "tree");
   return tiles;

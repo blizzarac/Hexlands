@@ -204,6 +204,7 @@ function createRenderer(canvas) {
       if (t.landmark === "mine") drawMine(x, y);
       else if (t.landmark === "village") drawVillage(x, y, t.landmarkUsed);
       else if (t.landmark === "fort") drawAncientFort(x, y);
+      else if (t.landmark === "throne") drawThrone(x, y);
       if (t.tree) drawTree(x, y, t.tree);
       if (t.grave) drawGrave(x, y);
       if (t.structure === "capital") {
@@ -287,6 +288,42 @@ function createRenderer(canvas) {
       ctx.lineTo(x + dx + 1.5, y + dy - 3);
       ctx.stroke();
     }
+  }
+
+  // The Throne: a golden seat on a stepped stone dais, with a soft glow that
+  // marks it as the duel's central prize.
+  function drawThrone(x, y) {
+    const G = y + 7.5;
+    const glow = 0.18 + 0.08 * Math.sin(performance.now() / 500);
+    ctx.fillStyle = `rgba(255,210,74,${glow})`;
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fill();
+    // dais steps
+    ctx.strokeStyle = "#3a3f38";
+    ctx.lineWidth = 1.1;
+    ctx.fillStyle = "#9aa3b2";
+    ctx.beginPath(); ctx.rect(x - 8, G - 2.2, 16, 2.2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#aab2bf";
+    ctx.beginPath(); ctx.rect(x - 5.5, G - 4.2, 11, 2); ctx.fill(); ctx.stroke();
+    // golden throne: high back, seat, armrests
+    ctx.fillStyle = "#e0b23c";
+    ctx.strokeStyle = "#7a5b12";
+    ctx.beginPath();
+    ctx.moveTo(x - 3.2, G - 4.2);
+    ctx.lineTo(x - 3.2, G - 13);
+    ctx.quadraticCurveTo(x, G - 15.4, x + 3.2, G - 13);
+    ctx.lineTo(x + 3.2, G - 4.2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#c99a28";
+    ctx.beginPath(); ctx.rect(x - 4.6, G - 7.4, 9.2, 1.9); ctx.fill(); ctx.stroke();
+    // gem
+    ctx.fillStyle = "#c4372c";
+    ctx.beginPath();
+    ctx.arc(x, G - 12.2, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 
   // A mine: rocky mound with a dark timber-framed entrance and gold flecks.

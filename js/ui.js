@@ -235,6 +235,9 @@ function updateTileTooltip(state, key, sx, sy) {
       : `Village <span class="tt-dim">— +${VILLAGE_PLUNDER} plunder on first capture</span>`);
   } else if (t.landmark === "fort") {
     rows.push(`Ancient fort <span class="tt-dim">— defends at ${ANCIENT_FORT_DEFENSE} while held; can't be built on</span>`);
+  } else if (t.landmark === "throne") {
+    rows.push(`👑 The Throne <span class="tt-dim">— +${THRONE_INCOME} income; hold for ` +
+      `${THRONE_HOLD_ROUNDS} rounds to win (${state.throneHeldRounds}/${THRONE_HOLD_ROUNDS})</span>`);
   }
 
   if (t.structure === "capital") {
@@ -289,6 +292,11 @@ function landmarkDescription(tile) {
   if (tile.landmark === "fort") {
     return `Ancient fort — while held, it defends this tile and its neighbours at level ${ANCIENT_FORT_DEFENSE}. It can't be built on and survives capture.`;
   }
+  if (tile.landmark === "throne") {
+    return `👑 The Throne — +${THRONE_INCOME} income while held. Hold it for ` +
+      `${THRONE_HOLD_ROUNDS} consecutive rounds to win the duel. It has no ` +
+      `defence of its own — garrison it or lose it.`;
+  }
   return null;
 }
 
@@ -328,6 +336,22 @@ function updateHUD(state, ui, undoAvailable) {
     }
     if (titleParts.length) chip.title = titleParts.join(" — ");
     chips.appendChild(chip);
+  }
+
+  const throneEl = document.getElementById("throne-status");
+  const throne = state.tiles.get(THRONE_KEY);
+  if (throne && throne.landmark === "throne") {
+    throneEl.classList.remove("hidden");
+    throneEl.classList.toggle("danger", state.throneHolder > 0);
+    if (state.throneHolder === 0) {
+      throneEl.textContent = `👑 Throne: yours — ${state.throneHeldRounds}/${THRONE_HOLD_ROUNDS}`;
+    } else if (state.throneHolder > 0) {
+      throneEl.textContent = `👑 Throne: enemy — ${state.throneHeldRounds}/${THRONE_HOLD_ROUNDS}`;
+    } else {
+      throneEl.textContent = "👑 Throne unclaimed";
+    }
+  } else {
+    throneEl.classList.add("hidden");
   }
 
   const province = ui.selectedProvinceKey ? provinceAt(state, ui.selectedProvinceKey) : null;

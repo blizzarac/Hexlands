@@ -97,6 +97,36 @@ function towerUpgradeCost(state, player, targetLevel) {
 const DUEL_SEED = 0xC1A55;
 const DUEL_TILE_COUNT = 190;
 
+// The Throne: the duel map's central objective at (0,0). +4 income while
+// held, and holding it for 10 consecutive rounds wins the duel outright.
+const THRONE_KEY = "0,0";
+const THRONE_INCOME = 4;
+const THRONE_HOLD_ROUNDS = 10;
+
+// Called once per full round (after the round counter advances).
+function updateThrone(state) {
+  const t = state.tiles.get(THRONE_KEY);
+  if (!t || t.landmark !== "throne" || state.gameOver) return;
+  const holder = t.owner;
+  if (holder >= 0 && holder === state.throneHolder) {
+    state.throneHeldRounds += 1;
+  } else {
+    state.throneHolder = holder;
+    state.throneHeldRounds = holder >= 0 ? 1 : 0;
+  }
+  if (state.throneHeldRounds >= THRONE_HOLD_ROUNDS) {
+    if (state.throneHolder === 0) {
+      state.gameOver = "victory";
+      state.gameOverReason =
+        `You held the Throne for ${THRONE_HOLD_ROUNDS} rounds — crowned!`;
+    } else {
+      state.gameOver = "defeat";
+      state.gameOverReason =
+        `The enemy held the Throne for ${THRONE_HOLD_ROUNDS} rounds.`;
+    }
+  }
+}
+
 // Game randomness goes through rand(state). In standard games rngState is
 // null and this is plain Math.random; in duel mode it is a mulberry32 stream
 // whose cursor lives in the state (and therefore in undo snapshots), so
@@ -123,6 +153,8 @@ function newGame(opts) {
     mode: isDuel ? "duel" : "standard",
     difficulty: opts.difficulty || "normal",
     rngState: isDuel ? DUEL_SEED >>> 0 : null,
+    throneHolder: -1,
+    throneHeldRounds: 0,
     gameOver: null, // 'victory' | 'defeat'
   };
   state.tiles = isDuel
@@ -274,6 +306,7 @@ function provinceIncome(state, p) {
     if (prospecting && t.terrain === "hills") tileIncome += 1;
     income += tileIncome;
     if (t.landmark === "mine") income += MINE_INCOME + (prospecting ? 2 : 0);
+    if (t.landmark === "throne") income += THRONE_INCOME;
     if (t.structure === "farm") {
       const perLevel = (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) + (agriculture ? 1 : 0);
       income += perLevel * (t.structureLevel || 1);
@@ -780,6 +813,8 @@ function snapshotState(state) {
     gameOver: state.gameOver,
     gameOverReason: state.gameOverReason,
     doctrines: state.players.map(pl => [...(pl.doctrines || [])]),
+    throneHolder: state.throneHolder,
+    throneHeldRounds: state.throneHeldRounds,
   });
 }
 
@@ -800,4 +835,6 @@ function restoreState(state, snapshot) {
       if (state.players[i]) state.players[i].doctrines = d;
     });
   }
+  state.throneHolder = data.throneHolder ?? -1;
+  state.throneHeldRounds = data.throneHeldRounds ?? 0;
 }

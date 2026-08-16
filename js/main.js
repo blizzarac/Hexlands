@@ -210,8 +210,9 @@
     if (!state.gameOver) {
       state.round += 1;
       growTrees(state);
+      updateThrone(state);
       state.currentPlayer = 0;
-      startPlayerTurn(state, 0);
+      if (!state.gameOver) startPlayerTurn(state, 0);
       checkGameOver(state);
     }
 
@@ -299,9 +300,9 @@
     document.getElementById("row-size").classList.toggle("hidden", duel);
     document.getElementById("row-ai").classList.toggle("hidden", duel);
     document.getElementById("mode-desc").textContent = duel
-      ? "One fixed, mirror-symmetric map against a single Balanced opponent. " +
-        "No randomness anywhere — identical play gives identical games, so " +
-        "strategies can be studied like chess lines."
+      ? "One fixed, mirror-symmetric map against a single Balanced opponent — " +
+        "no randomness anywhere, so strategies can be studied like chess " +
+        "lines. Hold the central Throne for 10 rounds to claim the crown."
       : "Conquer a random island against AI opponents with random personalities.";
   }
   document.getElementById("opt-mode").addEventListener("change", updateModeUI);
