@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/antiyoy-web-game-trexee]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
