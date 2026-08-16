@@ -102,7 +102,7 @@ function createUI(canvas, renderer, callbacks) {
     if (!province || !from || !from.unit) return;
     const level = from.unit.level;
     const effLevel = effectiveUnitLevel(state, fromKey);
-    const range = moveRange(from.unit);
+    const range = moveRange(state, state.currentPlayer, from.unit);
     const dist = reachableWithin(state, fromKey, range);
     for (const k of dist.keys()) {
       if (k === fromKey) continue;
@@ -197,7 +197,7 @@ function computeThreats(state) {
     for (const uk of p.tiles) {
       const t = state.tiles.get(uk);
       if (!t.unit) continue;
-      const range = moveRange(t.unit);
+      const range = moveRange(state, p.owner, t.unit);
       const dist = reachableWithin(state, uk, range);
       const eff = effectiveUnitLevel(state, uk);
       for (const [k, d] of dist) {
@@ -314,12 +314,19 @@ function updateHUD(state, ui, undoAvailable) {
     const alive = playerAlive(state, pl.id);
     const tiles = [...state.tiles.values()].filter(t => t.owner === pl.id).length;
     const style = pl.aiStyle ? AI_STYLES[pl.aiStyle] : null;
+    const doctrineIcons = (pl.doctrines || []).map(id => DOCTRINES[id].icon).join("");
     const chip = document.createElement("span");
     chip.className = "chip" + (alive ? "" : " dead") +
       (pl.id === state.currentPlayer ? " current" : "");
     chip.innerHTML = `<span class="dot" style="background:${pl.color}"></span>` +
-      `${pl.name}${style ? " " + style.icon : ""} · ${tiles}`;
-    if (style) chip.title = `${style.label} (${AI_DIFFICULTIES[state.difficulty].label} difficulty)`;
+      `${pl.name}${style ? " " + style.icon : ""} · ${tiles}` +
+      (doctrineIcons ? ` ${doctrineIcons}` : "");
+    const titleParts = [];
+    if (style) titleParts.push(`${style.label} (${AI_DIFFICULTIES[state.difficulty].label} difficulty)`);
+    if (pl.doctrines && pl.doctrines.length) {
+      titleParts.push("Doctrines: " + pl.doctrines.map(id => DOCTRINES[id].name).join(", "));
+    }
+    if (titleParts.length) chip.title = titleParts.join(" — ");
     chips.appendChild(chip);
   }
 
@@ -341,13 +348,13 @@ function updateHUD(state, ui, undoAvailable) {
 
   const canAct = !!own && !state.gameOver;
   const btn = id => document.getElementById(id);
-  const cheapestTowerAction = own ? Math.min(TOWER_COST,
+  const cheapestTowerAction = own ? Math.min(towerBuildCost(state, 0),
     ...own.tiles
       .filter(k => {
         const t = state.tiles.get(k);
         return t.structure === "tower" && (t.structureLevel || 1) < MAX_TOWER_LEVEL;
       })
-      .map(k => TOWER_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
+      .map(k => towerUpgradeCost(state, 0, (state.tiles.get(k).structureLevel || 1) + 1))
   ) : Infinity;
   const cheapestFarmAction = own ? Math.min(farmCost(state, own),
     ...own.tiles
@@ -357,7 +364,9 @@ function updateHUD(state, ui, undoAvailable) {
       })
       .map(k => FARM_UPGRADE_COSTS[(state.tiles.get(k).structureLevel || 1) + 1])
   ) : Infinity;
-  btn("btn-unit").disabled = !canAct || own.money < UNIT_COST;
+  btn("btn-unit").textContent = `Unit ⬡${unitCost(state, 0)}`;
+  btn("btn-tower").textContent = `Tower ⬡${towerBuildCost(state, 0)}`;
+  btn("btn-unit").disabled = !canAct || own.money < unitCost(state, 0);
   btn("btn-tower").disabled = !canAct || own.money < cheapestTowerAction;
   btn("btn-farm").disabled = !canAct || own.money < cheapestFarmAction;
   btn("btn-sell").disabled = !canAct ||

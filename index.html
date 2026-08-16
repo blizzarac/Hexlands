@@ -86,12 +86,21 @@
           <li>Upgrades: with the Tower or Farm button armed, click the existing building (gold outline). Towers climb a four-step ladder — Watchtower (def 2) → Fort ⬡30 (def 3) → Castle ⬡45 (def 4, boost reaches 2 tiles) → Citadel ⬡60 (boost reaches 3 tiles). Defence caps at 4, so a tower-boosted baron can always break a siege. Farms go to level 3 (+4 income each, +6 on meadows).</li>
           <li>Each AI has a playstyle, shown next to its name: ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands), 🛡️ Turtle (fortifies), ⚖️ Balanced.</li>
           <li>The Sell button lets you sell units, towers and farms for 75% of what they cost — handy for downsizing an army before it bankrupts the province.</li>
+          <li><b>Doctrines</b>: on rounds 5, 15 and 25 every player adopts a permanent empire edict (cheaper units, stronger towers, richer farms…). Picks are public — shown as icons next to each player's name — and there's no luck involved.</li>
           <li>Hover any tile for its terrain, defence and contents. Your tiles the enemy could capture next turn are marked with a dashed red outline, and tiles that changed hands during the enemy phase pulse (red if they were yours). A red ! on a capital warns of bankruptcy next round.</li>
           <li>Your game auto-saves after every action — close the tab and pick it up later with <b>Continue</b>.</li>
           <li><b>Duel mode</b> is the competitive format: you against one Balanced AI on a fixed, mirror-symmetric map with zero randomness — identical play always produces an identical game, so openings can be studied like chess.</li>
           <li>Win by destroying every enemy province <b>or controlling 65% of the island</b> (60% in duel). Duels also end after round 60 — whoever holds more tiles wins; equal is a draw.</li>
         </ul>
       </details>
+    </div>
+  </div>
+
+  <div id="doctrine-overlay" class="overlay hidden">
+    <div class="panel">
+      <h1>Choose a Doctrine</h1>
+      <p class="subtitle">A permanent edict for your realm. Everyone can see what you pick.</p>
+      <div id="doctrine-cards"></div>
     </div>
   </div>
 

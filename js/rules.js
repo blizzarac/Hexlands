@@ -34,6 +34,65 @@ const MAX_UNIT_LEVEL = 4;
 const PLAYER_COLORS = ["#4f8fd9", "#d9564f", "#9a6bd0", "#d9a13f", "#4fb8b8", "#d06bb0"];
 const PLAYER_NAMES = ["You", "Red", "Purple", "Amber", "Teal", "Pink"];
 
+// ---------------------------------------------------------------------------
+// Doctrines: permanent, public empire edicts. One free pick from the full
+// pool at each of these rounds — no randomness, so duel picks are bookable.
+
+const DOCTRINE_ROUNDS = [5, 15, 25];
+const DOCTRINES = {
+  agriculture: { name: "Agriculture", icon: "🌾",
+    desc: "Farms produce +1 income per level." },
+  prospecting: { name: "Prospecting", icon: "⛏️",
+    desc: "Mines pay +2 more, and your hills tiles earn +1 income." },
+  banking: { name: "Banking", icon: "🪙",
+    desc: "Each province earns +1 per full 25 coins in its treasury (max +4)." },
+  conscription: { name: "Conscription", icon: "🗡️",
+    desc: "New units cost 8 instead of 10." },
+  discipline: { name: "Field Discipline", icon: "🐎",
+    desc: "All your units move 1 tile further." },
+  siegecraft: { name: "Siegecraft", icon: "🪓",
+    desc: "Enemy structure defence counts 1 lower against your units." },
+  masonry: { name: "Masonry", icon: "🧱",
+    desc: "Towers cost 25% less to build and upgrade." },
+  militia: { name: "Militia", icon: "🛡️",
+    desc: "Your capitals defend at 2 and boost adjacent units by +1." },
+};
+
+function hasDoctrine(state, player, id) {
+  if (player === null || player === undefined || player < 0) return false;
+  const pl = state.players[player];
+  return !!(pl && pl.doctrines && pl.doctrines.includes(id));
+}
+
+// How many picks this player has earned but not yet made.
+function pendingDoctrinePicks(state, player) {
+  const earned = DOCTRINE_ROUNDS.filter(r => state.round >= r).length;
+  return Math.max(0, earned - (state.players[player].doctrines || []).length);
+}
+
+function adoptDoctrine(state, player, id) {
+  if (!DOCTRINES[id]) return { ok: false, reason: "Unknown doctrine" };
+  const pl = state.players[player];
+  if (pl.doctrines.includes(id)) return { ok: false, reason: "Already adopted" };
+  if (pendingDoctrinePicks(state, player) <= 0) return { ok: false, reason: "No pick available" };
+  pl.doctrines.push(id);
+  return { ok: true };
+}
+
+function unitCost(state, player) {
+  return hasDoctrine(state, player, "conscription") ? 8 : UNIT_COST;
+}
+
+function towerBuildCost(state, player) {
+  return hasDoctrine(state, player, "masonry")
+    ? Math.floor(TOWER_COST * 0.75) : TOWER_COST;
+}
+
+function towerUpgradeCost(state, player, targetLevel) {
+  const c = TOWER_UPGRADE_COSTS[targetLevel];
+  return hasDoctrine(state, player, "masonry") ? Math.floor(c * 0.75) : c;
+}
+
 // Duel mode: 1v1 on a fixed, mirror-symmetric map with no luck anywhere.
 const DUEL_SEED = 0xC1A55;
 const DUEL_TILE_COUNT = 190;
@@ -84,6 +143,7 @@ function newGame(opts) {
       color: PLAYER_COLORS[i],
       isAI: i !== 0,
       aiStyle: i === 0 ? null : (isDuel ? "balanced" : styleDeck[(i - 1) % styleDeck.length]),
+      doctrines: [],
     });
   }
   recomputeProvinces(state);
@@ -204,15 +264,23 @@ function provincesOf(state, player) {
 }
 
 function provinceIncome(state, p) {
+  const agriculture = hasDoctrine(state, p.owner, "agriculture");
+  const prospecting = hasDoctrine(state, p.owner, "prospecting");
   let income = 0;
   for (const k of p.tiles) {
     const t = state.tiles.get(k);
     if (t.tree || t.grave) continue;
-    income += TERRAIN_INCOME[t.terrain] ?? 1;
-    if (t.landmark === "mine") income += MINE_INCOME;
+    let tileIncome = TERRAIN_INCOME[t.terrain] ?? 1;
+    if (prospecting && t.terrain === "hills") tileIncome += 1;
+    income += tileIncome;
+    if (t.landmark === "mine") income += MINE_INCOME + (prospecting ? 2 : 0);
     if (t.structure === "farm") {
-      income += (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) * (t.structureLevel || 1);
+      const perLevel = (FARM_INCOME[t.terrain] ?? FARM_INCOME.plains) + (agriculture ? 1 : 0);
+      income += perLevel * (t.structureLevel || 1);
     }
+  }
+  if (hasDoctrine(state, p.owner, "banking")) {
+    income += Math.min(4, Math.floor(p.money / 25));
   }
   return income;
 }
@@ -253,9 +321,11 @@ function hasTowerAura(state, key, owner) {
     for (let dr = Math.max(-R, -R - dq); dr <= Math.min(R, R - dq); dr++) {
       if (dq === 0 && dr === 0) continue;
       const t = state.tiles.get(keyOf(q + dq, r + dr));
-      if (!t || t.owner !== owner || t.structure !== "tower") continue;
+      if (!t || t.owner !== owner) continue;
       const d = (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
-      if (TOWER_AURA_RANGE[t.structureLevel || 1] >= d) return true;
+      if (t.structure === "tower" && TOWER_AURA_RANGE[t.structureLevel || 1] >= d) return true;
+      // Militia doctrine: capitals project the +1 aura to their neighbours.
+      if (t.structure === "capital" && d === 1 && hasDoctrine(state, owner, "militia")) return true;
     }
   }
   return false;
@@ -270,20 +340,26 @@ function effectiveUnitLevel(state, key) {
 // Defence of a tile = highest level among defenders on it and its neighbours
 // that share the tile's owner: structures (capital 1, tower 2, fort 3) and
 // units at their effective (aura-boosted) level. Neutral land is undefended.
-function tileDefense(state, key) {
+// When an attacker with the Siegecraft doctrine is given, all structure
+// contributions count 1 lower (units are unaffected).
+function tileDefense(state, key, attacker) {
   const t = state.tiles.get(key);
   if (!t || t.owner < 0) return 0;
+  const siege = hasDoctrine(state, attacker, "siegecraft") ? 1 : 0;
   let d = 0;
   const considerKey = k => {
     const tt = state.tiles.get(k);
     if (!tt || tt.owner !== t.owner) return;
     if (tt.unit) d = Math.max(d, effectiveUnitLevel(state, k));
-    if (tt.landmark === "fort") d = Math.max(d, ANCIENT_FORT_DEFENSE);
-    if (tt.structure === "capital") d = Math.max(d, 1);
+    if (tt.landmark === "fort") d = Math.max(d, ANCIENT_FORT_DEFENSE - siege);
+    if (tt.structure === "capital") {
+      const base = hasDoctrine(state, tt.owner, "militia") ? 2 : 1;
+      d = Math.max(d, base - siege);
+    }
     if (tt.structure === "tower") {
       const sd = TOWER_DEFENSE[tt.structureLevel || 1] +
         (tt.terrain === "hills" ? HILL_TOWER_BONUS : 0);
-      d = Math.max(d, Math.min(MAX_STRUCTURE_DEFENSE, sd));
+      d = Math.max(d, Math.min(MAX_STRUCTURE_DEFENSE, sd) - siege);
     }
   };
   considerKey(key);
@@ -298,7 +374,7 @@ function tileDefense(state, key) {
 function canCapture(state, level, targetKey, attacker) {
   const t = state.tiles.get(targetKey);
   if (!t || t.owner === attacker) return false;
-  return level > tileDefense(state, targetKey);
+  return level > tileDefense(state, targetKey, attacker);
 }
 
 // ---------------------------------------------------------------------------
@@ -306,8 +382,10 @@ function canCapture(state, level, targetKey, attacker) {
 
 // A unit moves up to its level in steps per turn (peasant 1 ... baron 4),
 // walking through friendly territory only. Occupied tiles can be passed
-// through; only the landing tile is restricted.
-function moveRange(unit) { return unit.level; }
+// through; only the landing tile is restricted. Field Discipline adds 1.
+function moveRange(state, owner, unit) {
+  return unit.level + (hasDoctrine(state, owner, "discipline") ? 1 : 0);
+}
 
 // Breadth-first distances from a tile through same-owner territory, capped at
 // `range` steps. Adjacent same-owner tiles are by definition one province, so
@@ -463,7 +541,7 @@ function moveUnit(state, fromKey, toKey) {
   const dest = state.tiles.get(toKey);
   if (!dest) return { ok: false, reason: "Not a valid tile" };
 
-  const range = moveRange(from.unit);
+  const range = moveRange(state, from.owner, from.unit);
   const dist = reachableWithin(state, fromKey, range);
 
   if (province.tiles.includes(toKey)) {
@@ -525,7 +603,8 @@ function buyUnit(state, provinceCapital, targetKey) {
   const province = state.provinces.find(
     p => p.capitalKey === provinceCapital && p.owner === state.currentPlayer);
   if (!province) return { ok: false, reason: "No such province" };
-  if (province.money < UNIT_COST) return { ok: false, reason: "Not enough money" };
+  const cost = unitCost(state, state.currentPlayer);
+  if (province.money < cost) return { ok: false, reason: "Not enough money" };
 
   const dest = state.tiles.get(targetKey);
   if (!dest) return { ok: false, reason: "Not a valid tile" };
@@ -545,7 +624,7 @@ function buyUnit(state, provinceCapital, targetKey) {
       }
       dest.grave = false;
     }
-    province.money -= UNIT_COST;
+    province.money -= cost;
     return { ok: true };
   }
 
@@ -555,7 +634,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   if (!canCapture(state, 1, targetKey, state.currentPlayer)) {
     return { ok: false, reason: "Tile is too well defended for a peasant" };
   }
-  province.money -= UNIT_COST;
+  province.money -= cost;
   dest.owner = state.currentPlayer;
   dest.unit = { level: 1, moved: true };
   dest.structure = null;
@@ -580,19 +659,20 @@ function buyTower(state, provinceCapital, targetKey) {
   if (dest.structure === "tower") {
     const level = dest.structureLevel || 1;
     if (level >= MAX_TOWER_LEVEL) return { ok: false, reason: "Already a citadel" };
-    const cost = TOWER_UPGRADE_COSTS[level + 1];
+    const cost = towerUpgradeCost(state, state.currentPlayer, level + 1);
     if (province.money < cost) return { ok: false, reason: "Not enough money" };
     province.money -= cost;
     dest.structureLevel = level + 1;
     return { ok: true };
   }
 
-  if (province.money < TOWER_COST) return { ok: false, reason: "Not enough money" };
+  const buildCost = towerBuildCost(state, state.currentPlayer);
+  if (province.money < buildCost) return { ok: false, reason: "Not enough money" };
   if (dest.landmark) return { ok: false, reason: "Can't build on a landmark" };
   if (dest.unit || dest.structure || dest.tree || dest.grave) {
     return { ok: false, reason: "Tile must be empty" };
   }
-  province.money -= TOWER_COST;
+  province.money -= buildCost;
   dest.structure = "tower";
   dest.structureLevel = 1;
   return { ok: true };
@@ -699,6 +779,7 @@ function snapshotState(state) {
     rngState: state.rngState,
     gameOver: state.gameOver,
     gameOverReason: state.gameOverReason,
+    doctrines: state.players.map(pl => [...(pl.doctrines || [])]),
   });
 }
 
@@ -714,4 +795,9 @@ function restoreState(state, snapshot) {
   state.rngState = data.rngState;
   state.gameOver = data.gameOver;
   state.gameOverReason = data.gameOverReason;
+  if (data.doctrines) {
+    data.doctrines.forEach((d, i) => {
+      if (state.players[i]) state.players[i].doctrines = d;
+    });
+  }
 }

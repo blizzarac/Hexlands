@@ -58,6 +58,25 @@ const AI_STYLES = {
   },
 };
 
+// Fixed doctrine priorities per playstyle — deterministic, so duel-mode
+// opponents are bookable.
+const AI_DOCTRINE_PRIORITY = {
+  balanced: ["agriculture", "conscription", "masonry", "prospecting", "discipline", "siegecraft", "banking", "militia"],
+  warlord: ["conscription", "siegecraft", "discipline", "militia", "agriculture", "masonry", "prospecting", "banking"],
+  builder: ["agriculture", "prospecting", "banking", "masonry", "militia", "conscription", "discipline", "siegecraft"],
+  turtle: ["masonry", "militia", "banking", "agriculture", "prospecting", "conscription", "siegecraft", "discipline"],
+};
+
+function aiPickDoctrines(state, player) {
+  const style = state.players[player].aiStyle || "balanced";
+  const priority = AI_DOCTRINE_PRIORITY[style] || AI_DOCTRINE_PRIORITY.balanced;
+  let guard = 0;
+  while (pendingDoctrinePicks(state, player) > 0 && guard++ < 10) {
+    const pick = priority.find(id => !state.players[player].doctrines.includes(id));
+    if (!pick || !adoptDoctrine(state, player, pick).ok) break;
+  }
+}
+
 function aiParams(state, player) {
   return {
     diff: AI_DIFFICULTIES[state.difficulty] || AI_DIFFICULTIES.normal,
@@ -150,7 +169,7 @@ function attackOnce(state, player, province, diff, style) {
   let best = null;
   for (const uk of units) {
     const unit = state.tiles.get(uk).unit;
-    const range = moveRange(unit);
+    const range = moveRange(state, player, unit);
     const dist = reachableWithin(state, uk, range);
     const eff = effectiveUnitLevel(state, uk);
     const seen = new Set();
@@ -191,7 +210,7 @@ function tryMerge(state, player, province, diff, style) {
   idle.sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
   for (const a of idle) {
     const ua = state.tiles.get(a).unit;
-    const dist = reachableWithin(state, a, moveRange(ua));
+    const dist = reachableWithin(state, a, moveRange(state, player, ua));
     for (const b of idle) {
       if (b === a || !dist.has(b)) continue;
       const combined = ua.level + state.tiles.get(b).unit.level;
@@ -249,7 +268,7 @@ function spendMoney(state, player, province, diff, style) {
       state.provinces.find(x => x.owner === player && x.tiles.includes(province.capitalKey));
     if (!p) return;
     province = p;
-    if (province.money < UNIT_COST + diff.reserve) break;
+    if (province.money < unitCost(state, player) + diff.reserve) break;
     const net = provinceIncome(state, province) - provinceUpkeep(state, province);
     if (net - UNIT_UPKEEP[1] + 1 < 0 && province.money < 30) break;
 
@@ -278,7 +297,7 @@ function spendMoney(state, player, province, diff, style) {
     });
     // Hills make towers defend one level higher — grab those spots first.
     const spot = spots.find(k => state.tiles.get(k).terrain === "hills") || spots[0];
-    if (spot && province.money >= TOWER_COST + UNIT_COST + diff.reserve) {
+    if (spot && province.money >= towerBuildCost(state, player) + UNIT_COST + diff.reserve) {
       buyTower(state, province.capitalKey, spot);
     } else if (!spot) {
       // No room for a new tower: climb the upgrade ladder on a frontline one,
@@ -292,7 +311,7 @@ function spendMoney(state, player, province, diff, style) {
           (state.tiles.get(a).structureLevel || 1) - (state.tiles.get(b).structureLevel || 1));
       const up = ups[0];
       if (up) {
-        const cost = TOWER_UPGRADE_COSTS[(state.tiles.get(up).structureLevel || 1) + 1];
+        const cost = towerUpgradeCost(state, player, (state.tiles.get(up).structureLevel || 1) + 1);
         if (province.money >= cost + UNIT_COST + diff.reserve) {
           buyTower(state, province.capitalKey, up);
         }
@@ -332,7 +351,7 @@ function repositionIdleUnits(state, player, province) {
     const here = borderDist.get(uk) ?? Infinity;
     if (here === 0) continue; // already on the border
     const unit = state.tiles.get(uk).unit;
-    const dist = reachableWithin(state, uk, moveRange(unit));
+    const dist = reachableWithin(state, uk, moveRange(state, player, unit));
     let spot = null, bestD = here;
     for (const k of dist.keys()) {
       const t = state.tiles.get(k);

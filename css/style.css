@@ -147,6 +147,27 @@ button.armed { background: #b07a2c; border-color: #e0b06a; }
 .panel label.hidden { display: none; }
 .panel button.hidden { display: none; }
 
+#doctrine-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.doctrine-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.doctrine-card .dc-icon { font-size: 22px; }
+.doctrine-card .dc-name { font-weight: 600; }
+.doctrine-card .dc-desc { font-size: 12.5px; color: #aab8c8; margin-top: 2px; }
+
 #tile-tooltip {
   position: absolute;
   z-index: 5;

@@ -76,6 +76,7 @@
     renderer.resize();
     renderer.fitToMap(state);
     refresh();
+    maybeShowDoctrinePick();
   }
 
   function attempt(fn) {
@@ -200,6 +201,7 @@
       if (pl.id === 0 || !playerAlive(state, pl.id)) continue;
       state.currentPlayer = pl.id;
       startPlayerTurn(state, pl.id);
+      aiPickDoctrines(state, pl.id);
       runAITurn(state, pl.id);
       checkGameOver(state);
       if (state.gameOver) break;
@@ -222,6 +224,7 @@
     maybeShowGameOver();
     saveGame();
     refresh();
+    maybeShowDoctrinePick();
   }
 
   function onUndo() {
@@ -237,6 +240,33 @@
     ui.selectedUnitKey = null;
     ui.highlights = new Map();
     refresh();
+  }
+
+  function maybeShowDoctrinePick() {
+    const overlay = document.getElementById("doctrine-overlay");
+    if (!state || state.gameOver || state.currentPlayer !== 0 ||
+        pendingDoctrinePicks(state, 0) <= 0) {
+      overlay.classList.add("hidden");
+      return;
+    }
+    const cards = document.getElementById("doctrine-cards");
+    cards.innerHTML = "";
+    for (const [id, d] of Object.entries(DOCTRINES)) {
+      if (state.players[0].doctrines.includes(id)) continue;
+      const btn = document.createElement("button");
+      btn.className = "doctrine-card";
+      btn.innerHTML = `<span class="dc-icon">${d.icon}</span>` +
+        `<span><div class="dc-name">${d.name}</div><div class="dc-desc">${d.desc}</div></span>`;
+      btn.addEventListener("click", () => {
+        if (!adoptDoctrine(state, 0, id).ok) return;
+        showToast(`${d.icon} Doctrine adopted: ${d.name}`);
+        saveGame();
+        refresh();
+        maybeShowDoctrinePick(); // another pick may still be pending
+      });
+      cards.appendChild(btn);
+    }
+    overlay.classList.remove("hidden");
   }
 
   function maybeShowGameOver() {

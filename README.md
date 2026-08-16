@@ -79,6 +79,14 @@ Two modes:
   invested cost (orange outline marks sellable assets). Capitals cannot be
   sold. The AI also downsizes its army rather than letting a province go
   bankrupt.
+- **Doctrines**: on rounds 5, 15 and 25 each player adopts one permanent
+  empire edict from a shared pool of eight — Agriculture (farms +1/level),
+  Prospecting (mines +2, hills +1), Banking (+1 per 25 banked, max +4),
+  Conscription (units cost 8), Field Discipline (+1 movement), Siegecraft
+  (enemy structure defence −1), Masonry (towers −25%), Militia (capitals
+  defend at 2 and grant the +1 aura). Picks are free choices from the full
+  list (no card luck), public, and shown beside each player's name; AI
+  playstyles follow fixed priorities, so duel opponents are bookable.
 - **Merging**: move a unit onto a friendly unit to combine their levels
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree
