@@ -101,7 +101,7 @@ const DUEL_TILE_COUNT = 190;
 // held, and holding it for 10 consecutive rounds wins the duel outright.
 const THRONE_KEY = "0,0";
 const THRONE_INCOME = 4;
-const THRONE_HOLD_ROUNDS = 10;
+const THRONE_HOLD_ROUNDS = 20;
 
 // Called once per full round (after the round counter advances).
 function updateThrone(state) {

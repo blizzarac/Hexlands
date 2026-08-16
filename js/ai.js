@@ -103,6 +103,11 @@ function runProvinceTurn(state, player, capital) {
     state.provinces.find(p => p.owner === player && p.capitalKey === capital) ||
     state.provinces.find(p => p.owner === player && p.tiles.includes(capital));
 
+  // 0. Objective first: a held but empty throne gets garrisoned before any
+  //    unit is spent on ordinary attacks.
+  const p0 = resolve();
+  if (p0) garrisonThrone(state, player, p0);
+
   // 1. Attack with existing units, best targets first. Lower difficulties
   //    have a chance to stop early, leaving units unused.
   for (let guard = 0; guard < 60; guard++) {
@@ -148,6 +153,13 @@ function targetValue(state, key, player, diff, style) {
     // The duel's central objective; contesting it grows urgent as the
     // holder's crown clock runs.
     value += 8 + (t.owner !== player && t.owner >= 0 ? state.throneHeldRounds : 0);
+  }
+  // Gravity toward an unheld throne: expansion and attacks lean centreward
+  // so the AI's frontier reaches the objective instead of wandering.
+  const throne = state.tiles.get(THRONE_KEY);
+  if (throne && throne.landmark === "throne" && throne.owner !== player) {
+    value += Math.max(0, 6 - hexDistance(key, THRONE_KEY)) *
+      (1 + state.throneHeldRounds * 0.15);
   }
   if (t.structure === "capital") value += 12 * style.structureMult;
   else if (t.structure === "tower") value += (4 + 2 * (t.structureLevel || 1)) * style.structureMult;
@@ -325,12 +337,32 @@ function spendMoney(state, player, province, diff, style) {
   }
 }
 
+// Keep a unit standing on a throne we hold; the crown clock depends on it.
+function garrisonThrone(state, player, province) {
+  const throne = state.tiles.get(THRONE_KEY);
+  if (!throne || throne.landmark !== "throne") return;
+  if (throne.owner !== player || throne.unit) return;
+  if (!province.tiles.includes(THRONE_KEY)) return;
+  const idle = province.tiles
+    .filter(k => {
+      const t = state.tiles.get(k);
+      return t.unit && !t.unit.moved;
+    })
+    .sort((a, b) => hexDistance(a, THRONE_KEY) - hexDistance(b, THRONE_KEY));
+  for (const uk of idle) {
+    if (moveUnit(state, uk, THRONE_KEY).ok) return;
+  }
+}
+
 function repositionIdleUnits(state, player, province) {
-  const idle = province.tiles.filter(k => {
+  let idle = province.tiles.filter(k => {
     const t = state.tiles.get(k);
     return t.unit && !t.unit.moved;
   });
   if (idle.length === 0) return;
+
+  const throne = state.tiles.get(THRONE_KEY);
+  const throneActive = throne && throne.landmark === "throne";
 
   // Distance-to-border map so interior units can march outward over turns.
   const isBorder = k => neighborKeys(k).some(nk => {
@@ -352,16 +384,23 @@ function repositionIdleUnits(state, player, province) {
     }
   }
 
+  // March gradient: toward the throne while someone else has it (or it is
+  // unclaimed), otherwise toward the border as usual.
+  const contested = throneActive && throne.owner !== player;
+  const gradient = k => contested
+    ? hexDistance(k, THRONE_KEY)
+    : (borderDist.get(k) ?? Infinity);
+
   for (const uk of idle) {
-    const here = borderDist.get(uk) ?? Infinity;
-    if (here === 0) continue; // already on the border
+    const here = gradient(uk);
+    if (!contested && here === 0) continue; // already on the border
     const unit = state.tiles.get(uk).unit;
     const dist = reachableWithin(state, uk, moveRange(state, player, unit));
     let spot = null, bestD = here;
     for (const k of dist.keys()) {
       const t = state.tiles.get(k);
       if (t.unit || t.structure || t.tree || t.grave) continue;
-      const d = borderDist.get(k) ?? Infinity;
+      const d = gradient(k);
       if (d < bestD) { bestD = d; spot = k; }
     }
     if (spot) moveUnit(state, uk, spot);
