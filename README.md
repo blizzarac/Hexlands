@@ -44,6 +44,10 @@ Two modes:
 - **Income**: a farm adds 4 per farm level on top of terrain income — 6 per
   level on meadows, so a level-3 meadow farm earns 20 a round (2 base + 18).
   Tiles covered by trees or gravestones earn nothing.
+- **Farms change hands**: capturing a farm tile takes the farm over intact,
+  level and all — towers are razed on capture, farms are spoils. Units may
+  stand on farm tiles (the farm keeps producing), so a garrisoned farm is a
+  defended farm.
 - **Landmarks** (map objectives; nothing can be built on them, trees avoid
   them, and duel maps mirror them): **mines** pay +3 income to whoever holds
   them and prefer hills; **villages** yield a one-time +12 plunder to their

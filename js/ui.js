@@ -107,7 +107,7 @@ function createUI(canvas, renderer, callbacks) {
     for (const k of dist.keys()) {
       if (k === fromKey) continue;
       const t = state.tiles.get(k);
-      if (t.structure) continue;
+      if (t.structure && t.structure !== "farm") continue;
       if (t.unit && t.unit.level + level > MAX_UNIT_LEVEL) continue;
       ui.highlights.set(k, "move");
     }
@@ -130,7 +130,7 @@ function createUI(canvas, renderer, callbacks) {
     if (kind === "unit") {
       for (const k of province.tiles) {
         const t = state.tiles.get(k);
-        if (t.structure) continue;
+        if (t.structure && t.structure !== "farm") continue;
         if (t.unit && t.unit.level >= MAX_UNIT_LEVEL) continue;
         ui.highlights.set(k, "move");
       }
