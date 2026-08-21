@@ -21,6 +21,7 @@
     ui.clearSelection();
     document.getElementById("start-overlay").classList.add("hidden");
     document.getElementById("end-overlay").classList.add("hidden");
+    document.getElementById("btn-results").classList.add("hidden");
     ui.recentCaptures = null;
     renderer.resize();
     renderer.fitToMap(state);
@@ -85,6 +86,7 @@
     ui.recentCaptures = null;
     document.getElementById("start-overlay").classList.add("hidden");
     document.getElementById("end-overlay").classList.add("hidden");
+    document.getElementById("btn-results").classList.add("hidden");
     renderer.resize();
     renderer.fitToMap(state);
     refresh();
@@ -469,6 +471,8 @@
       state.gameOver === "draw" ? "Draw" : "Defeat";
     text.textContent = (state.gameOverReason || "") + ` (round ${state.round})`;
     overlay.classList.remove("hidden");
+    // The panel can be dismissed to review the board; Results reopens it.
+    document.getElementById("btn-results").classList.remove("hidden");
     saveGame(); // clears the save for a finished game
   }
 
@@ -510,7 +514,17 @@
   updateContinueButton();
   document.getElementById("btn-restart").addEventListener("click", () => {
     document.getElementById("end-overlay").classList.add("hidden");
+    document.getElementById("btn-results").classList.add("hidden");
     document.getElementById("start-overlay").classList.remove("hidden");
+  });
+  document.getElementById("btn-export-end").addEventListener("click", onExport);
+  document.getElementById("btn-review").addEventListener("click", () => {
+    document.getElementById("end-overlay").classList.add("hidden");
+  });
+  document.getElementById("btn-results").addEventListener("click", () => {
+    if (state && state.gameOver) {
+      document.getElementById("end-overlay").classList.remove("hidden");
+    }
   });
   document.getElementById("btn-unit").addEventListener("click", () => armPlacement("unit"));
   document.getElementById("btn-tower").addEventListener("click", () => armPlacement("tower"));
