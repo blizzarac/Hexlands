@@ -177,7 +177,9 @@ function defenseValueOf(state, key) {
   const t = state.tiles.get(key);
   let v = 1;
   if (t.structure === "capital") v = 10;
-  else if (t.structure === "tower") v = 2 + 2 * (t.structureLevel || 1);
+  // Towers are captured intact, so a lost tower arms the enemy — and a
+  // garrison defends at max(unit, tower) with the tower's own +1 boost.
+  else if (t.structure === "tower") v = 4 + 2 * (t.structureLevel || 1);
   else if (t.structure === "farm") v = 2 + 2 * (t.structureLevel || 1);
   if (t.landmark === "mine") v = Math.max(v, 5);
   if (t.landmark === "fort") v = Math.max(v, 4);
@@ -203,12 +205,12 @@ function defendThreatened(state, player, province, diff) {
     const t = state.tiles.get(k);
     if (t.unit) continue; // already garrisoned
     // Structure tiles (except farms) can't be stood on: defend a neighbour.
-    const landings = (!t.structure || t.structure === "farm")
+    const landings = unitCanStandOn(t)
       ? [k]
       : neighborKeys(k).filter(nk => {
           const nt = state.tiles.get(nk);
           return nt && province.tiles.includes(nk) && !nt.unit && !nt.tree &&
-            !nt.grave && (!nt.structure || nt.structure === "farm");
+            !nt.grave && unitCanStandOn(nt);
         });
     if (landings.length === 0) continue;
     const idle = province.tiles
@@ -256,7 +258,7 @@ function setupSieges(state, player, province, diff, style) {
       if (k === uk) continue;
       const t = state.tiles.get(k);
       if (t.unit || t.tree || t.grave) continue;
-      if (t.structure && t.structure !== "farm") continue;
+      if (!unitCanStandOn(t)) continue;
       if (!hasTowerAura(state, k, player)) continue;
       const dd = hexDistance(k, bestT);
       if (dd <= range && dd < bestDist) { bestDist = dd; spot = k; }
@@ -721,15 +723,20 @@ function repositionIdleUnits(state, player, province) {
 
   for (const uk of idle) {
     const here = gradient(uk);
-    if (!contested && here === 0) continue; // already on the border
+    const onTower = state.tiles.get(uk).structure === "tower";
+    // Already garrisoning a border tower: best possible station, stay put.
+    if (!contested && here === 0 && onTower) continue;
+    const hereScore = here - (onTower ? 0.5 : 0);
     const unit = state.tiles.get(uk).unit;
     const dist = reachableWithin(state, uk, moveRange(state, player, unit));
-    let spot = null, bestD = here;
+    let spot = null, bestD = hereScore;
     for (const k of dist.keys()) {
       const t = state.tiles.get(k);
       if (t.unit || t.tree || t.grave) continue;
-      if (t.structure && t.structure !== "farm") continue;
-      const d = gradient(k);
+      if (!unitCanStandOn(t)) continue;
+      // A tower is the best station at any distance tie: the unit fights at
+      // +1 there and the tile defends at max(unit, tower).
+      const d = gradient(k) - (t.structure === "tower" ? 0.5 : 0);
       if (d < bestD) { bestD = d; spot = k; }
     }
     if (spot) moveUnit(state, uk, spot);

@@ -240,7 +240,11 @@ function createRenderer(canvas) {
       if (t.structure === "tower") drawTower(x, y, t.structureLevel || 1);
       if (t.structure === "farm") drawFarm(x, y, t.structureLevel || 1);
       if (t.unit) {
-        drawUnit(x, y, t.unit,
+        // A garrison shares its tile with the building: draw it offset so
+        // the tower (or farm) stays recognisable underneath.
+        const ox = t.structure ? 8 : 0;
+        const oy = t.structure ? 5 : 0;
+        drawUnit(x + ox, y + oy, t.unit,
           t.owner === state.currentPlayer && !state.players[t.owner].isAI,
           hasTowerAura(state, k, t.owner));
       }
