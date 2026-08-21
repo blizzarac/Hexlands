@@ -44,10 +44,12 @@ Two modes:
 - **Income**: a farm adds 4 per farm level on top of terrain income — 6 per
   level on meadows, so a level-3 meadow farm earns 20 a round (2 base + 18).
   Tiles covered by trees or gravestones earn nothing.
-- **Farms change hands**: capturing a farm tile takes the farm over intact,
-  level and all — towers are razed on capture, farms are spoils. Units may
-  stand on farm tiles (the farm keeps producing), so a garrisoned farm is a
-  defended farm.
+- **Farms and towers change hands**: capturing a farm or tower tile takes
+  the building over intact, level and all. Units may stand on farms and
+  towers as garrisons — the tile defends at whichever is higher, building
+  or unit, and a unit on its own tower gets the tower's +1 boost — but if
+  the tile is captured, the garrison dies with it. Capitals are still
+  razed on capture.
 - **Landmarks** (map objectives; nothing can be built on them, trees avoid
   them, and duel maps mirror them): **mines** pay +3 income to whoever holds
   them and prefer hills; **villages** yield a one-time +12 plunder to their
@@ -98,7 +100,7 @@ Two modes:
 - **Merging**: move a unit onto a friendly unit to combine their levels
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree
-  chops it for 3 coins (and ends that unit's turn).
+  chops it for 1 coin (and ends that unit's turn).
 - **Difficulty** (Easy / Normal / Hard / Hexed) controls how competently the
   AI plays — how often its units act, how well it picks targets, whether it
   merges units, and how freely it spends. It never cheats on resources.

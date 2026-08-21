@@ -21,7 +21,7 @@ const FARM_BASE_COST = 12;
 const FARM_COST_STEP = 2;
 const FARM_INCOME = { plains: 4, meadow: 6 }; // per farm level, by terrain
 const FARM_UPGRADE_COSTS = [0, 0, 20, 30]; // indexed by target level
-const TREE_CHOP_REWARD = 3;
+const TREE_CHOP_REWARD = 1;
 const TERRAIN_INCOME = { plains: 1, meadow: 2, hills: 0 };
 const HILL_TOWER_BONUS = 1; // towers/forts built on hills defend one level higher
 const MINE_INCOME = 3;           // while held
@@ -349,12 +349,19 @@ const TOWER_AURA_BONUS = 1;
 // Does any friendly tower's aura cover this tile? Watchtowers and forts
 // reach 1 tile, castles 2, citadels 3. Scans the coordinate neighbourhood up
 // to the maximum range.
+// Whether a unit may end its move on this tile. Farms and towers can be
+// garrisoned (captured intact, stood upon); capitals and landmark structures
+// cannot.
+function unitCanStandOn(tile) {
+  return !tile.structure || tile.structure === "farm" || tile.structure === "tower";
+}
+
 function hasTowerAura(state, key, owner) {
   const { q, r } = parseKey(key);
   const R = 3;
   for (let dq = -R; dq <= R; dq++) {
     for (let dr = Math.max(-R, -R - dq); dr <= Math.min(R, R - dq); dr++) {
-      if (dq === 0 && dr === 0) continue;
+      // dq=dr=0 is the tile itself: a unit garrisoning a tower gets its boost.
       const t = state.tiles.get(keyOf(q + dq, r + dr));
       if (!t || t.owner !== owner) continue;
       const d = (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
@@ -601,7 +608,7 @@ function moveUnit(state, fromKey, toKey) {
       recordAction(state, { r: state.round, p: state.currentPlayer, a: "move", from: fromKey, to: toKey, m: 1 });
       return { ok: true };
     }
-    if (dest.structure && dest.structure !== "farm") {
+    if (!unitCanStandOn(dest)) {
       return { ok: false, reason: "Tile is occupied by a building" };
     }
     const unit = from.unit;
@@ -627,8 +634,8 @@ function moveUnit(state, fromKey, toKey) {
   const unit = from.unit;
   from.unit = null;
   dest.owner = state.currentPlayer;
-  dest.unit = unit;
-  if (dest.structure !== "farm") { // farms are taken over, not razed
+  dest.unit = unit; // any defending garrison falls with the tile
+  if (!unitCanStandOn(dest)) { // farms and towers are taken over, not razed
     dest.structure = null;
     dest.structureLevel = null;
   }
@@ -667,7 +674,7 @@ function buyUnit(state, provinceCapital, targetKey) {
       if (merged > MAX_UNIT_LEVEL) return { ok: false, reason: "Unit is already level 4" };
       dest.unit = { level: merged, moved: dest.unit.moved };
     } else {
-      if (dest.structure && dest.structure !== "farm") {
+      if (!unitCanStandOn(dest)) {
       return { ok: false, reason: "Tile is occupied by a building" };
     }
       dest.unit = { level: 1, moved: false };
@@ -692,7 +699,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   province.money -= cost;
   dest.owner = state.currentPlayer;
   dest.unit = { level: 1, moved: true };
-  if (dest.structure !== "farm") { // farms are taken over, not razed
+  if (!unitCanStandOn(dest)) { // farms and towers are taken over, not razed
     dest.structure = null;
     dest.structureLevel = null;
   }
