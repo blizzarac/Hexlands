@@ -44,12 +44,15 @@ Two modes:
 - **Income**: a farm adds 4 per farm level on top of terrain income — 6 per
   level on meadows, so a level-3 meadow farm earns 20 a round (2 base + 18).
   Tiles covered by trees or gravestones earn nothing.
-- **Farms and towers change hands**: capturing a farm or tower tile takes
-  the building over intact, level and all. Units may stand on farms and
-  towers as garrisons — the tile defends at whichever is higher, building
-  or unit, and a unit on its own tower gets the tower's +1 boost — but if
-  the tile is captured, the garrison dies with it. Capitals are still
-  razed on capture.
+- **Farms and towers change hands — towers are never destroyed**: capturing
+  a farm or tower tile takes the building over intact, level and all.
+  Storming a tower costs the attacker: the capturing unit is spent in the
+  assault, leaving the tower under new ownership but unguarded. Units may
+  stand on farms and towers as garrisons — the tile defends at whichever
+  is higher, building or unit, and a unit on its own tower gets the
+  tower's +1 boost — but if the tile is captured, the garrison dies with
+  it (so a stormed, garrisoned tower kills both units). Capitals are
+  still razed on capture.
 - **Landmarks** (map objectives; nothing can be built on them, trees avoid
   them, and duel maps mirror them): **mines** pay +3 income to whoever holds
   them and prefer hills; **villages** yield a one-time +12 plunder to their
