@@ -399,7 +399,8 @@ function repositionIdleUnits(state, player, province) {
     let spot = null, bestD = here;
     for (const k of dist.keys()) {
       const t = state.tiles.get(k);
-      if (t.unit || t.structure || t.tree || t.grave) continue;
+      if (t.unit || t.tree || t.grave) continue;
+      if (t.structure && t.structure !== "farm") continue;
       const d = gradient(k);
       if (d < bestD) { bestD = d; spot = k; }
     }

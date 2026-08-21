@@ -98,7 +98,7 @@ const DUEL_SEED = 0xC1A55;
 const DUEL_TILE_COUNT = 190;
 
 // The Throne: the duel map's central objective at (0,0). +4 income while
-// held, and holding it for 10 consecutive rounds wins the duel outright.
+// held, and holding it for 20 consecutive rounds wins the duel outright.
 const THRONE_KEY = "0,0";
 const THRONE_INCOME = 4;
 const THRONE_HOLD_ROUNDS = 20;
@@ -221,7 +221,7 @@ function recomputeProvinces(state) {
       // A lone tile cannot sustain a province: capital vanishes, units starve.
       const t = state.tiles.get(comp[0]);
       if (t.structure === "capital") t.structure = null;
-      if (t.unit) { t.unit = null; t.grave = true; }
+      if (t.unit) { t.unit = null; t.grave = !t.structure; }
       continue;
     }
 
@@ -469,7 +469,7 @@ function startPlayerTurn(state, player) {
       // Bankruptcy: every unit in the province starves.
       for (const k of p.tiles) {
         const t = state.tiles.get(k);
-        if (t.unit) { t.unit = null; t.grave = true; }
+        if (t.unit) { t.unit = null; t.grave = !t.structure; }
       }
       p.money = 0;
     }
@@ -588,7 +588,9 @@ function moveUnit(state, fromKey, toKey) {
       from.unit = null;
       return { ok: true };
     }
-    if (dest.structure) return { ok: false, reason: "Tile is occupied by a building" };
+    if (dest.structure && dest.structure !== "farm") {
+      return { ok: false, reason: "Tile is occupied by a building" };
+    }
     const unit = from.unit;
     from.unit = null;
     dest.unit = unit;
@@ -612,8 +614,10 @@ function moveUnit(state, fromKey, toKey) {
   from.unit = null;
   dest.owner = state.currentPlayer;
   dest.unit = unit;
-  dest.structure = null;
-  dest.structureLevel = null;
+  if (dest.structure !== "farm") { // farms are taken over, not razed
+    dest.structure = null;
+    dest.structureLevel = null;
+  }
   dest.tree = null;
   dest.grave = false;
   unit.moved = true;
@@ -648,7 +652,9 @@ function buyUnit(state, provinceCapital, targetKey) {
       if (merged > MAX_UNIT_LEVEL) return { ok: false, reason: "Unit is already level 4" };
       dest.unit = { level: merged, moved: dest.unit.moved };
     } else {
-      if (dest.structure) return { ok: false, reason: "Tile is occupied by a building" };
+      if (dest.structure && dest.structure !== "farm") {
+      return { ok: false, reason: "Tile is occupied by a building" };
+    }
       dest.unit = { level: 1, moved: false };
       if (dest.tree) {
         dest.tree = null;
@@ -670,8 +676,10 @@ function buyUnit(state, provinceCapital, targetKey) {
   province.money -= cost;
   dest.owner = state.currentPlayer;
   dest.unit = { level: 1, moved: true };
-  dest.structure = null;
-  dest.structureLevel = null;
+  if (dest.structure !== "farm") { // farms are taken over, not razed
+    dest.structure = null;
+    dest.structureLevel = null;
+  }
   dest.tree = null;
   dest.grave = false;
   plunderVillage(state, dest, province);
