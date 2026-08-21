@@ -883,6 +883,80 @@ function snapshotState(state) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Export encoding (version 2)
+//
+// Exports must stay small enough to attach to a chat or bug report, so tiles
+// are stored sparsely — only the fields that differ from a virgin tile — and
+// province tile lists are dropped entirely (recomputable from tile ownership;
+// only the treasuries, keyed by capital, are real state).
+
+const EXPORT_FORMAT = "hexlands-game";
+const EXPORT_VERSION = 2;
+
+function compactTile(t) {
+  const c = { q: t.q, r: t.r };
+  if (t.owner !== -1) c.owner = t.owner;
+  if (t.terrain !== "plains") c.terrain = t.terrain;
+  if (t.unit) c.unit = t.unit;
+  if (t.structure) c.structure = t.structure;
+  if (t.structureLevel) c.structureLevel = t.structureLevel;
+  if (t.landmark) c.landmark = t.landmark;
+  if (t.landmarkUsed) c.landmarkUsed = true;
+  if (t.tree) c.tree = t.tree;
+  if (t.grave) c.grave = true;
+  return c;
+}
+
+function expandTile(t) {
+  return {
+    q: t.q, r: t.r,
+    owner: t.owner !== undefined ? t.owner : -1,
+    terrain: t.terrain || "plains",
+    unit: t.unit || null,
+    structure: t.structure || null,
+    structureLevel: t.structureLevel || null,
+    landmark: t.landmark || null,
+    landmarkUsed: !!t.landmarkUsed,
+    tree: t.tree || null,
+    grave: !!t.grave,
+  };
+}
+
+// The full export object, minus the timestamp (the UI adds that — game rules
+// stay clock-free so duels remain deterministic).
+function exportGameData(state) {
+  const snap = JSON.parse(snapshotState(state));
+  const treasuries = {};
+  for (const p of snap.provinces) treasuries[p.capitalKey] = p.money;
+  delete snap.provinces;
+  snap.tiles = snap.tiles.map(compactTile);
+  snap.treasuries = treasuries;
+  return {
+    format: EXPORT_FORMAT,
+    version: EXPORT_VERSION,
+    players: state.players,
+    history: state.history || [],
+    state: snap,
+  };
+}
+
+// Turn an imported file's state (version 1 full snapshots or version 2
+// compact) back into a full snapshot string for restoreState. Version 2
+// provinces come back with empty tile lists — run recomputeProvinces on the
+// restored state to rebuild them.
+function decodeExportedState(data) {
+  const s = data.state;
+  if (!s.treasuries) return JSON.stringify(s); // version 1: already full
+  const snap = { ...s, tiles: s.tiles.map(expandTile) };
+  const ownerAt = new Map(snap.tiles.map(t => [keyOf(t.q, t.r), t.owner]));
+  snap.provinces = Object.entries(s.treasuries).map(([capitalKey, money]) => ({
+    id: 0, owner: ownerAt.get(capitalKey), tiles: [], money, capitalKey,
+  }));
+  delete snap.treasuries;
+  return JSON.stringify(snap);
+}
+
 function restoreState(state, snapshot) {
   const data = JSON.parse(snapshot);
   state.tiles = new Map(data.tiles.map(t => [keyOf(t.q, t.r), t]));
