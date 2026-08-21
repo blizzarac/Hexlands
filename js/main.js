@@ -81,6 +81,10 @@
       gameOver: null, gameOverReason: null,
     };
     restoreState(state, data.snapshot);
+    // Compact imports carry provinces without their tile lists; rebuild them.
+    if (state.provinces.some(p => !p.tiles || p.tiles.length === 0)) {
+      recomputeProvinces(state);
+    }
     undoStack = [];
     ui.clearSelection();
     ui.recentCaptures = null;
@@ -96,21 +100,16 @@
   // --- export / import -----------------------------------------------------
 
   function buildExport() {
-    return {
-      format: "hexlands-game",
-      version: 1,
-      exported: new Date().toISOString(),
-      players: state.players,
-      history: state.history || [],
-      state: JSON.parse(snapshotState(state)),
-    };
+    const out = exportGameData(state);
+    out.exported = new Date().toISOString();
+    return out;
   }
 
   function onExport() {
     if (!state) return;
     if (playback) endPlayback(); // export the real end-of-turn state
     const name = `hexlands-${state.mode}-round${state.round}.json`;
-    const blob = new Blob([JSON.stringify(buildExport(), null, 1)],
+    const blob = new Blob([JSON.stringify(buildExport())],
       { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -131,13 +130,13 @@
       showToast("Not a Hexlands game file");
       return false;
     }
-    if (data.version !== 1) {
+    if (data.version !== 1 && data.version !== 2) {
       showToast(`Unsupported game-file version (${data.version})`);
       return false;
     }
     try {
       loadGameData({
-        snapshot: JSON.stringify(data.state),
+        snapshot: decodeExportedState(data),
         players: data.players,
         history: data.history,
       });

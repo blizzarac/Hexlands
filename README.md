@@ -138,7 +138,11 @@ Games auto-save to the browser after every action — the start screen offers
 **Export / import**: the Export button (top bar) downloads the whole game as
 a JSON file — complete board state plus a chronological log of every action
 by every player (`history`: moves with capture/merge flags, purchases,
-upgrades, sells, doctrine picks, each tagged with round and player). Import
+upgrades, sells, doctrine picks, each tagged with round and player). The
+format is compact — tiles only list fields that differ from an empty tile,
+and province tile lists are recomputed on load — so even late-game files
+stay small enough to attach to a chat or bug report (older, verbose
+version-1 files still import). Import
 (top bar or start screen) restores such a file exactly, including duel-mode
 determinism. The format is deliberately analysis-friendly: share a game for
 review, or attach it to a bug/balance report. The game-over panel offers
