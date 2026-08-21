@@ -105,9 +105,11 @@ Two modes:
   **Hexed** adds planning on top of Hard's perfect execution — frontier-aware
   expansion (tuned by AI-vs-AI tournament), captures aimed at articulation
   tiles that split your provinces, garrisons on the tiles you could actually
-  capture, and army escalation: once the war front dominates its border it
-  merges and upgrades units into spearmen, knights and barons instead of
-  spamming peasants, so defensive walls only buy you time. Like every
+  capture, and army escalation: once the war front dominates its border —
+  or the moment you field a level-2 unit — it merges and upgrades units
+  into spearmen, knights and barons instead of spamming peasants, and
+  walls its threatened frontier with towers, so defensive lines only buy
+  you time. Like every
   difficulty, it never cheats on resources: beating it is purely a matter of
   outplaying it.
 - **Playstyles**: each AI is dealt a personality, shown beside its name —

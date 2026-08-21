@@ -49,11 +49,15 @@ const AI_DIFFICULTIES = {
     defend: true,  // garrison threatened assets: counters human-style raids
     strip: false,  // measured net-negative in tournaments; kept for tuning
     siege: false,  // measured net-negative in tournaments; kept for tuning
-    escalate: true, // once the frontier is all enemy, level units up (merges
-                    // + buy-upgrades) instead of spamming peasants — a flat
-                    // level-1 army loses to anyone who fields knights
-                    // (learned from a shared game log; 63% vs hard, same as
-                    // before, but now breaks walls)
+    escalate: true, // once the war front dominates the border, level units
+                    // up (merges + buy-upgrades) instead of spamming
+                    // peasants — a flat level-1 army loses to anyone who
+                    // fields knights (learned from a shared game log)
+    react: true,    // reactive escalation: the moment the enemy fields a
+                    // level-2+ unit, start levelling too, even with neutral
+                    // fringe left — waiting four rounds lost a second log
+    walls: true,    // at war, buy one tower covering the most threatened
+                    // frontier tiles before peasants drain the treasury
     raidgate: false, // suppress low-value peasant raids: measured clearly
                      // net-negative (38% mirror) — raids buy real tempo
   },
@@ -282,6 +286,21 @@ function frontierIsWar(state, province) {
 }
 let WAR_FRONT_RATIO = 1; // enemy border tiles per neutral one before escalating
 
+// The war-phase gate: the front dominates the border, or (reactive) the
+// enemy has started fielding levelled units — an arms race waits for no
+// fringe. Hard opponents and early-game AIs never level first, so the
+// reactive trigger costs nothing in tournaments while answering the human
+// habit of teching up mid-expansion.
+function warPhase(state, player, province, diff) {
+  if (frontierIsWar(state, province)) return true;
+  if (diff.react) {
+    for (const t of state.tiles.values()) {
+      if (t.unit && t.unit.level >= 2 && t.owner >= 0 && t.owner !== player) return true;
+    }
+  }
+  return false;
+}
+
 function borderTargets(state, province) {
   const targets = new Set();
   for (const k of province.tiles) {
@@ -446,7 +465,7 @@ function tryMerge(state, player, province, diff, style) {
   // instead climb one rung at a time: any merge that out-levels the current
   // army is allowed while some border tile stays blocked.
   let needed = maxDefense;
-  if (diff.escalate && frontierIsWar(state, province)) {
+  if (diff.escalate && warPhase(state, player, province, diff)) {
     const blocked = targets.some(k => tileDefense(state, k) >= maxLevel);
     if (!blocked || maxLevel >= MAX_UNIT_LEVEL) return;
     needed = maxLevel;
@@ -513,7 +532,7 @@ function spendMoney(state, player, province, diff, style) {
   // this province owns, another peasant is money down the drain — put the
   // coins into levelling an existing unit (buying onto a unit raises it one
   // level) until it can break through.
-  const atWar = diff.smart ? frontierIsWar(state, province) : false;
+  const atWar = diff.smart ? warPhase(state, player, province, diff) : false;
   if (diff.escalate && atWar) {
     const memo = new Map();
     let maxEff = 0;
@@ -550,6 +569,30 @@ function spendMoney(state, player, province, diff, style) {
         if (!buyUnit(state, province.capitalKey, uk).ok) break;
       }
     }
+  }
+
+  // War-phase walls: the enemy can churn undefended gains straight back, so
+  // before peasants drain the treasury, put one tower where it covers the
+  // most tiles the enemy could actually capture next turn.
+  if (diff.walls && atWar &&
+      province.money >= towerBuildCost(state, player) + UNIT_COST + diff.reserve) {
+    const threatened = computeCapturableTiles(state, player);
+    let best = null, bestCover = 1.75; // a wall must protect at least 2 tiles
+    if (threatened.size >= 2) {
+      for (const k of province.tiles) {
+        const t = state.tiles.get(k);
+        if (t.unit || t.structure || t.tree || t.grave || t.landmark) continue;
+        if (tileDefense(state, k) >= 2) continue; // already covered
+        let cover = threatened.has(k) ? 1 : 0;
+        for (const nk of neighborKeys(k)) {
+          const nt = state.tiles.get(nk);
+          if (nt && nt.owner === player && threatened.has(nk)) cover++;
+        }
+        if (t.terrain === "hills") cover += 0.25; // +1 defence up there
+        if (cover > bestCover) { bestCover = cover; best = k; }
+      }
+    }
+    if (best) buyTower(state, province.capitalKey, best);
   }
 
   // Buy units that immediately capture something.
