@@ -315,6 +315,9 @@ function provinceIncome(state, p) {
   if (hasDoctrine(state, p.owner, "banking")) {
     income += Math.min(4, Math.floor(p.money / 25));
   }
+  // Hexed difficulty: AI realms are blessed with +2 income per province.
+  // Disclosed in the help text — the one open handicap on top of smarter play.
+  if (state.difficulty === "hexed" && p.owner > 0) income += 2;
   return income;
 }
 
@@ -756,6 +759,42 @@ function buyFarm(state, provinceCapital, targetKey) {
   dest.structure = "farm";
   dest.structureLevel = 1;
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Threat analysis
+
+// Every tile of `defender` that some other player could capture on their next
+// turn: reachable unit attacks (auras included) plus direct peasant
+// buy-captures. Used for the human threat overlay and by the Hexed AI.
+function computeCapturableTiles(state, defender) {
+  const threats = new Set();
+  for (const p of state.provinces) {
+    if (p.owner === defender) continue;
+    if (p.money >= unitCost(state, p.owner)) {
+      for (const k of p.tiles) {
+        for (const nk of neighborKeys(k)) {
+          const t = state.tiles.get(nk);
+          if (t && t.owner === defender && canCapture(state, 1, nk, p.owner)) threats.add(nk);
+        }
+      }
+    }
+    for (const uk of p.tiles) {
+      const t = state.tiles.get(uk);
+      if (!t.unit) continue;
+      const range = moveRange(state, p.owner, t.unit);
+      const dist = reachableWithin(state, uk, range);
+      const eff = effectiveUnitLevel(state, uk);
+      for (const [k, d] of dist) {
+        if (d > range - 1) continue;
+        for (const nk of neighborKeys(k)) {
+          const tt = state.tiles.get(nk);
+          if (tt && tt.owner === defender && canCapture(state, eff, nk, p.owner)) threats.add(nk);
+        }
+      }
+    }
+  }
+  return threats;
 }
 
 // ---------------------------------------------------------------------------
