@@ -126,6 +126,14 @@ next round.
 Games auto-save to the browser after every action — the start screen offers
 **Continue** when a saved game exists.
 
+**Export / import**: the Export button (top bar) downloads the whole game as
+a JSON file — complete board state plus a chronological log of every action
+by every player (`history`: moves with capture/merge flags, purchases,
+upgrades, sells, doctrine picks, each tagged with round and player). Import
+(top bar or start screen) restores such a file exactly, including duel-mode
+determinism. The format is deliberately analysis-friendly: share a game for
+review, or attach it to a bug/balance report.
+
 ## Code layout
 
 | File | Responsibility |

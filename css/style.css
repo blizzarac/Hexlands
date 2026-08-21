@@ -67,6 +67,14 @@ html, body {
   color: #ffd97a;
 }
 #throne-status.hidden { display: none; }
+
+#topbar-tools { margin-left: auto; display: flex; gap: 6px; }
+button.mini {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: rgba(30, 42, 58, 0.85);
+}
 #throne-status.danger { color: #ff9b8a; }
 .chip.current { outline: 1.5px solid rgba(255, 255, 255, 0.75); }
 
