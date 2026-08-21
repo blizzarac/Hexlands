@@ -565,7 +565,9 @@ function checkGameOver(state) {
 // Actions. All return { ok: true } or { ok: false, reason }.
 // Every successful action logs itself to state.history so games can be
 // exported and analysed move by move. Entry fields: r round, p player,
-// a action, plus specifics (x:1 marks a capture, m:1 a merge).
+// a action, plus specifics (x:1 marks a capture, m:1 a merge, c the buying
+// province's capital). Entries carry enough to re-apply the action, which
+// the UI uses to replay AI turns move by move.
 
 function recordAction(state, entry) {
   if (!state.history) state.history = [];
@@ -677,7 +679,7 @@ function buyUnit(state, provinceCapital, targetKey) {
       dest.grave = false;
     }
     province.money -= cost;
-    recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", to: targetKey });
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", c: provinceCapital, to: targetKey });
     return { ok: true };
   }
 
@@ -697,7 +699,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   dest.tree = null;
   dest.grave = false;
   plunderVillage(state, dest, province);
-  recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", to: targetKey, x: 1 });
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", c: provinceCapital, to: targetKey, x: 1 });
   recomputeProvinces(state);
   checkGameOver(state);
   return { ok: true };
@@ -719,7 +721,7 @@ function buyTower(state, provinceCapital, targetKey) {
     if (province.money < cost) return { ok: false, reason: "Not enough money" };
     province.money -= cost;
     dest.structureLevel = level + 1;
-    recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", to: targetKey, l: dest.structureLevel });
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", c: provinceCapital, to: targetKey, l: dest.structureLevel });
     return { ok: true };
   }
 
@@ -732,7 +734,7 @@ function buyTower(state, provinceCapital, targetKey) {
   province.money -= buildCost;
   dest.structure = "tower";
   dest.structureLevel = 1;
-  recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", to: targetKey, l: 1 });
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", c: provinceCapital, to: targetKey, l: 1 });
   return { ok: true };
 }
 
@@ -761,7 +763,7 @@ function buyFarm(state, provinceCapital, targetKey) {
     if (province.money < cost) return { ok: false, reason: "Not enough money" };
     province.money -= cost;
     dest.structureLevel = level + 1;
-    recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", to: targetKey, l: dest.structureLevel });
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", c: provinceCapital, to: targetKey, l: dest.structureLevel });
     return { ok: true };
   }
 
@@ -773,7 +775,7 @@ function buyFarm(state, provinceCapital, targetKey) {
   province.money -= cost;
   dest.structure = "farm";
   dest.structureLevel = 1;
-  recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", to: targetKey, l: 1 });
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", c: provinceCapital, to: targetKey, l: 1 });
   return { ok: true };
 }
 
@@ -855,7 +857,7 @@ function sellAsset(state, provinceCapital, targetKey) {
     t.structureLevel = null;
   }
   province.money += price;
-  recordAction(state, { r: state.round, p: state.currentPlayer, a: "sell", at: targetKey, v: price });
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "sell", c: provinceCapital, at: targetKey, v: price });
   return { ok: true, price };
 }
 

@@ -23,6 +23,7 @@
       </span>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none">
     </div>
+    <div id="ai-banner" class="hidden"><span id="ai-banner-text">AI is moving…</span><span class="ab-hint">click anywhere to skip</span></div>
     <div id="toast"></div>
     <div id="bottombar">
       <div id="province-info">
@@ -67,6 +68,9 @@
           <option value="5">5 AIs</option>
         </select>
       </label>
+      <label id="row-anim" title="After you end your turn, the camera follows each AI move as it happens instead of showing the result instantly. Click anywhere during the replay to skip it.">Watch AI moves
+        <input type="checkbox" id="opt-anim" checked>
+      </label>
       <label>Difficulty
         <select id="opt-diff">
           <option value="easy">Easy</option>
@@ -96,6 +100,7 @@
           <li>The Sell button lets you sell units, towers and farms for 75% of what they cost — handy for downsizing an army before it bankrupts the province.</li>
           <li><b>Doctrines</b>: on rounds 5, 15 and 25 every player adopts a permanent empire edict (cheaper units, stronger towers, richer farms…). Picks are public — shown as icons next to each player's name — and there's no luck involved.</li>
           <li>Hover any tile for its terrain, defence and contents. Your tiles the enemy could capture next turn are marked with a dashed red outline, and tiles that changed hands during the enemy phase pulse (red if they were yours). A red ! on a capital warns of bankruptcy next round.</li>
+          <li>With <b>Watch AI moves</b> on, ending your turn replays the enemy phase move by move — the camera follows each action and returns to where you left it. Click anywhere (or press Esc) to skip to the result.</li>
           <li>Your game auto-saves after every action — close the tab and pick it up later with <b>Continue</b>. The <b>Export</b> button downloads the whole game (board state plus every move ever made) as a file you can share or re-import.</li>
           <li><b>Duel mode</b> is the competitive format: you against one Balanced AI on a fixed, mirror-symmetric map with zero randomness — identical play always produces an identical game, so openings can be studied like chess.</li>
           <li><b>Hexed</b> difficulty never cheats — it simply plans: expansion races toward open country, captures aim at tiles that split your provinces in two, and it garrisons exactly the assets you could take. Keep your empire's shape compact or it will carve you apart.</li>

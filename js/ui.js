@@ -45,6 +45,7 @@ function createUI(canvas, renderer, callbacks) {
       const [a, b] = [...activePointers.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
       if (pinchDist > 0) {
+        renderer.cancelPan();
         renderer.camera.scale = clampScale(renderer.camera.scale * d / pinchDist);
       }
       pinchDist = d;
@@ -53,6 +54,7 @@ function createUI(canvas, renderer, callbacks) {
     }
     if (!dragging) return;
     const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (dx || dy) renderer.cancelPan();
     renderer.camera.x -= dx / renderer.camera.scale;
     renderer.camera.y -= dy / renderer.camera.scale;
     if (Math.hypot(dx, dy) > 3) dragMoved = true;
@@ -75,6 +77,7 @@ function createUI(canvas, renderer, callbacks) {
 
   canvas.addEventListener("wheel", e => {
     e.preventDefault();
+    renderer.cancelPan();
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
     renderer.camera.scale = clampScale(renderer.camera.scale * factor);
   }, { passive: false });
