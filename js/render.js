@@ -6,8 +6,34 @@ const HEX_SIZE = 26;
 
 function createRenderer(canvas) {
   const ctx = canvas.getContext("2d");
-  const camera = { x: 0, y: 0, scale: 1 };
+  const camera = { x: 0, y: 0, scale: 1, tx: null, ty: null, tscale: null };
   const corners = hexCorners(HEX_SIZE);
+
+  // Smooth camera: set a target and draw() eases toward it each frame.
+  function panTo(x, y, scale) {
+    camera.tx = x;
+    camera.ty = y;
+    camera.tscale = scale ?? null;
+  }
+  function cancelPan() {
+    camera.tx = camera.ty = camera.tscale = null;
+  }
+  function tickCamera() {
+    if (camera.tx === null) return;
+    const ease = 0.16;
+    camera.x += (camera.tx - camera.x) * ease;
+    camera.y += (camera.ty - camera.y) * ease;
+    if (camera.tscale !== null) camera.scale += (camera.tscale - camera.scale) * ease;
+    const done = Math.abs(camera.tx - camera.x) < 0.5 &&
+      Math.abs(camera.ty - camera.y) < 0.5 &&
+      (camera.tscale === null || Math.abs(camera.tscale - camera.scale) < 0.003);
+    if (done) {
+      camera.x = camera.tx;
+      camera.y = camera.ty;
+      if (camera.tscale !== null) camera.scale = camera.tscale;
+      cancelPan();
+    }
+  }
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
@@ -76,6 +102,7 @@ function createRenderer(canvas) {
   }
 
   function draw(state, view) {
+    tickCamera();
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
@@ -976,5 +1003,5 @@ function createRenderer(canvas) {
     }
   }
 
-  return { camera, resize, fitToMap, draw, screenToTileKey, screenToWorld };
+  return { camera, resize, fitToMap, draw, screenToTileKey, screenToWorld, panTo, cancelPan };
 }

@@ -8,8 +8,10 @@
   let state = null;
   let undoStack = [];
   let ui = null;
+  let playback = null; // active AI-turn replay, see startPlayback()
 
   function startGame() {
+    if (playback) endPlayback();
     const mode = document.getElementById("opt-mode").value;
     const tileCount = +document.getElementById("opt-size").value;
     const aiCount = +document.getElementById("opt-ai").value;
@@ -68,6 +70,7 @@
   // Shared loader for saved games and imported files: data must carry
   // { snapshot, players, history }.
   function loadGameData(data) {
+    if (playback) endPlayback();
     state = {
       tiles: new Map(), players: data.players, provinces: [],
       nextProvinceId: 1, currentPlayer: 0, round: 1,
@@ -103,6 +106,7 @@
 
   function onExport() {
     if (!state) return;
+    if (playback) endPlayback(); // export the real end-of-turn state
     const blob = new Blob([JSON.stringify(buildExport(), null, 1)],
       { type: "application/json" });
     const a = document.createElement("a");
@@ -166,6 +170,7 @@
   }
 
   function onTileClick(key) {
+    if (playback) { endPlayback(); return; } // any click skips the AI replay
     if (!state || state.gameOver || state.currentPlayer !== 0) return;
     const tile = state.tiles.get(key);
 
@@ -240,6 +245,7 @@
   }
 
   function armPlacement(kind) {
+    if (playback) return;
     if (!state || state.gameOver || !ui.selectedProvinceKey) {
       showToast("Select one of your provinces first");
       return;
@@ -260,10 +266,19 @@
     refresh();
   }
 
+  // Ending the turn runs the whole AI phase instantly and invisibly, then —
+  // if "Watch AI moves" is on — rewinds the visible board and replays the
+  // recorded history entries one by one with the camera following along.
+  // The invisible result is authoritative: when the replay ends (or is
+  // skipped) it is swapped in wholesale, so replay fidelity can never
+  // corrupt the game, and duel determinism is untouched.
   function onEndTurn() {
-    if (!state || state.gameOver || state.currentPlayer !== 0) return;
+    if (!state || state.gameOver || state.currentPlayer !== 0 || playback) return;
     ui.clearSelection();
     undoStack = [];
+
+    const preSnapshot = snapshotState(state);
+    const preLen = state.history ? state.history.length : 0;
 
     // Record the board before the AI phase so their captures can be flagged.
     const ownerBefore = new Map();
@@ -288,20 +303,121 @@
       checkGameOver(state);
     }
 
-    ui.recentCaptures = new Map();
+    const captures = new Map();
     for (const [k, t] of state.tiles) {
       const before = ownerBefore.get(k);
-      if (before !== t.owner) ui.recentCaptures.set(k, before);
+      if (before !== t.owner) captures.set(k, before);
     }
 
+    saveGame(); // persist the authoritative post-turn state right away
+
+    const entries = (state.history || []).slice(preLen);
+    const watch = document.getElementById("opt-anim").checked;
+    if (!watch || entries.length === 0) {
+      ui.recentCaptures = captures;
+      maybeShowGameOver();
+      refresh();
+      maybeShowDoctrinePick();
+      return;
+    }
+
+    const postSnapshot = snapshotState(state);
+    const postHistory = state.history.slice();
+    restoreState(state, preSnapshot);
+    startPlayback(entries, { postSnapshot, postHistory, captures });
+  }
+
+  // --- AI-turn playback ----------------------------------------------------
+
+  function startPlayback(entries, post) {
+    playback = {
+      entries, post, idx: 0, timer: null,
+      savedCam: {
+        x: renderer.camera.x, y: renderer.camera.y, scale: renderer.camera.scale,
+      },
+      // spend ~5s total however many moves there are, within sane per-move bounds
+      delay: Math.max(120, Math.min(450, Math.round(5000 / entries.length))),
+    };
+    document.getElementById("ai-banner").classList.remove("hidden");
+    stepPlayback();
+  }
+
+  function setAiBanner(playerId) {
+    const pl = state.players[playerId];
+    const el = document.getElementById("ai-banner-text");
+    el.textContent = `${pl.name} is moving…`;
+    el.style.color = pl.color;
+  }
+
+  function stepPlayback() {
+    const pb = playback;
+    if (!pb) return;
+    if (pb.idx >= pb.entries.length) { endPlayback(); return; }
+    const entry = pb.entries[pb.idx];
+
+    // Entering the next AI's turn: same sequencing as the invisible run.
+    if (state.currentPlayer !== entry.p) {
+      state.currentPlayer = entry.p;
+      startPlayerTurn(state, entry.p);
+    }
+    setAiBanner(entry.p);
+
+    const focusKey = entry.to || entry.at || entry.from;
+    const tile = focusKey ? state.tiles.get(focusKey) : null;
+    if (tile) {
+      const { x, y } = hexToPixel(tile.q, tile.r, HEX_SIZE);
+      renderer.panTo(x, y);
+    }
+    if (entry.a === "doctrine") {
+      const d = DOCTRINES[entry.d];
+      if (d) showToast(`${state.players[entry.p].name} adopts ${d.icon} ${d.name}`);
+    }
+
+    // Let the camera arrive, then apply the move and go on to the next one.
+    pb.timer = setTimeout(() => {
+      pb.timer = null;
+      applyEntry(entry);
+      if (!playback) return; // a failed replay step bailed out to the end state
+      pb.idx += 1;
+      updateHUD(state, ui, false);
+      stepPlayback();
+    }, pb.delay);
+  }
+
+  function applyEntry(entry) {
+    let res = null;
+    switch (entry.a) {
+      case "move":     res = moveUnit(state, entry.from, entry.to); break;
+      case "unit":     res = buyUnit(state, entry.c, entry.to); break;
+      case "tower":    res = buyTower(state, entry.c, entry.to); break;
+      case "farm":     res = buyFarm(state, entry.c, entry.to); break;
+      case "sell":     res = sellAsset(state, entry.c, entry.at); break;
+      case "doctrine": res = adoptDoctrine(state, entry.p, entry.d); break;
+    }
+    // Replay should mirror the invisible run exactly; if it ever can't,
+    // jump straight to the authoritative end state instead of desyncing.
+    if (!res || !res.ok) endPlayback();
+  }
+
+  // Finish (or skip) the replay: swap in the authoritative post-turn state
+  // and glide the camera back to where the player left it.
+  function endPlayback() {
+    const pb = playback;
+    if (!pb) return;
+    playback = null;
+    if (pb.timer) clearTimeout(pb.timer);
+    document.getElementById("ai-banner").classList.add("hidden");
+    state.history = pb.post.postHistory;
+    restoreState(state, pb.post.postSnapshot);
+    ui.recentCaptures = pb.post.captures;
+    renderer.panTo(pb.savedCam.x, pb.savedCam.y, pb.savedCam.scale);
     maybeShowGameOver();
-    saveGame();
     refresh();
     maybeShowDoctrinePick();
   }
 
   function onUndo() {
-    if (undoStack.length === 0) return;
+    if (playback || undoStack.length === 0) return;
     restoreState(state, undoStack.pop());
     ui.clearSelection();
     saveGame();
@@ -309,6 +425,7 @@
   }
 
   function onCancel() {
+    if (playback) { endPlayback(); return; }
     ui.placing = null;
     ui.selectedUnitKey = null;
     ui.highlights = new Map();
@@ -379,6 +496,17 @@
   }
   document.getElementById("opt-mode").addEventListener("change", updateModeUI);
   updateModeUI();
+
+  // Remember the "Watch AI moves" preference across visits.
+  const animBox = document.getElementById("opt-anim");
+  try {
+    const saved = localStorage.getItem("hexlands-watch-ai");
+    if (saved !== null) animBox.checked = saved === "1";
+  } catch (e) { /* storage unavailable */ }
+  animBox.addEventListener("change", () => {
+    try { localStorage.setItem("hexlands-watch-ai", animBox.checked ? "1" : "0"); }
+    catch (e) { /* storage unavailable */ }
+  });
   updateContinueButton();
   document.getElementById("btn-restart").addEventListener("click", () => {
     document.getElementById("end-overlay").classList.add("hidden");
@@ -407,6 +535,8 @@
     renderer,
     exportGame: () => buildExport(),
     importGame,
+    isPlayingBack: () => !!playback,
+    skipPlayback: () => endPlayback(),
   };
 
   (function loop() {

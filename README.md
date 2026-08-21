@@ -118,6 +118,15 @@ Controls: click to select, drag to pan, scroll/pinch to zoom,
 right-click or `Esc` to cancel, `Enter` to end the turn. Undo works for your
 whole turn.
 
+**Watching the enemy phase**: with *Watch AI moves* ticked on the start
+screen (on by default, remembered across visits), ending your turn replays
+the AI phase move by move — the camera glides to each action, a banner names
+whoever is moving, and when the phase ends the view returns to exactly where
+you left it. Click anywhere (or press `Esc`) to skip straight to the result.
+The replay is purely visual: the turn is computed instantly up front and the
+authoritative result is swapped in at the end, so skipping never changes the
+outcome and duel-mode determinism is untouched.
+
 Reading the board: hover any tile for its terrain, defence and contents; your
 tiles the enemy could capture next turn always carry a dashed red outline;
 tiles captured during the enemy phase pulse (red if they were yours); and a

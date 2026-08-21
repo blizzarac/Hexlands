@@ -78,6 +78,22 @@ button.mini {
 #throne-status.danger { color: #ff9b8a; }
 .chip.current { outline: 1.5px solid rgba(255, 255, 255, 0.75); }
 
+#ai-banner {
+  align-self: center;
+  margin-top: 4px;
+  padding: 6px 18px;
+  border-radius: 8px;
+  background: rgba(10, 14, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+#ai-banner.hidden { display: none; }
+#ai-banner .ab-hint { font-size: 11.5px; font-weight: 400; color: #8fa0b2; }
+
 #toast {
   align-self: center;
   margin-top: 4px;
@@ -204,6 +220,7 @@ button.armed { background: #b07a2c; border-color: #e0b06a; }
 #tile-tooltip .tt-dim { color: #9fb0c2; }
 #tile-tooltip .tt-warn { color: #e08a8a; }
 .panel label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+.panel input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3f7ac2; }
 .panel select {
   padding: 6px 10px;
   border-radius: 6px;
