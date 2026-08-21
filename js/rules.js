@@ -76,6 +76,7 @@ function adoptDoctrine(state, player, id) {
   if (pl.doctrines.includes(id)) return { ok: false, reason: "Already adopted" };
   if (pendingDoctrinePicks(state, player) <= 0) return { ok: false, reason: "No pick available" };
   pl.doctrines.push(id);
+  recordAction(state, { r: state.round, p: player, a: "doctrine", d: id });
   return { ok: true };
 }
 
@@ -155,6 +156,7 @@ function newGame(opts) {
     rngState: isDuel ? DUEL_SEED >>> 0 : null,
     throneHolder: -1,
     throneHeldRounds: 0,
+    history: [], // chronological action log, for export and analysis
     gameOver: null, // 'victory' | 'defeat'
   };
   state.tiles = isDuel
@@ -561,6 +563,14 @@ function checkGameOver(state) {
 
 // ---------------------------------------------------------------------------
 // Actions. All return { ok: true } or { ok: false, reason }.
+// Every successful action logs itself to state.history so games can be
+// exported and analysed move by move. Entry fields: r round, p player,
+// a action, plus specifics (x:1 marks a capture, m:1 a merge).
+
+function recordAction(state, entry) {
+  if (!state.history) state.history = [];
+  state.history.push(entry);
+}
 
 function moveUnit(state, fromKey, toKey) {
   const from = state.tiles.get(fromKey);
@@ -586,6 +596,7 @@ function moveUnit(state, fromKey, toKey) {
       if (merged > MAX_UNIT_LEVEL) return { ok: false, reason: "Merged unit would exceed level 4" };
       dest.unit = { level: merged, moved: dest.unit.moved };
       from.unit = null;
+      recordAction(state, { r: state.round, p: state.currentPlayer, a: "move", from: fromKey, to: toKey, m: 1 });
       return { ok: true };
     }
     if (dest.structure && dest.structure !== "farm") {
@@ -600,6 +611,7 @@ function moveUnit(state, fromKey, toKey) {
       province.money += TREE_CHOP_REWARD;
     }
     dest.grave = false;
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "move", from: fromKey, to: toKey });
     return { ok: true };
   }
 
@@ -622,6 +634,7 @@ function moveUnit(state, fromKey, toKey) {
   dest.grave = false;
   unit.moved = true;
   plunderVillage(state, dest, province);
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "move", from: fromKey, to: toKey, x: 1 });
   recomputeProvinces(state);
   checkGameOver(state);
   return { ok: true };
@@ -664,6 +677,7 @@ function buyUnit(state, provinceCapital, targetKey) {
       dest.grave = false;
     }
     province.money -= cost;
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", to: targetKey });
     return { ok: true };
   }
 
@@ -683,6 +697,7 @@ function buyUnit(state, provinceCapital, targetKey) {
   dest.tree = null;
   dest.grave = false;
   plunderVillage(state, dest, province);
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "unit", to: targetKey, x: 1 });
   recomputeProvinces(state);
   checkGameOver(state);
   return { ok: true };
@@ -704,6 +719,7 @@ function buyTower(state, provinceCapital, targetKey) {
     if (province.money < cost) return { ok: false, reason: "Not enough money" };
     province.money -= cost;
     dest.structureLevel = level + 1;
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", to: targetKey, l: dest.structureLevel });
     return { ok: true };
   }
 
@@ -716,6 +732,7 @@ function buyTower(state, provinceCapital, targetKey) {
   province.money -= buildCost;
   dest.structure = "tower";
   dest.structureLevel = 1;
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "tower", to: targetKey, l: 1 });
   return { ok: true };
 }
 
@@ -744,6 +761,7 @@ function buyFarm(state, provinceCapital, targetKey) {
     if (province.money < cost) return { ok: false, reason: "Not enough money" };
     province.money -= cost;
     dest.structureLevel = level + 1;
+    recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", to: targetKey, l: dest.structureLevel });
     return { ok: true };
   }
 
@@ -755,6 +773,7 @@ function buyFarm(state, provinceCapital, targetKey) {
   province.money -= cost;
   dest.structure = "farm";
   dest.structureLevel = 1;
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "farm", to: targetKey, l: 1 });
   return { ok: true };
 }
 
@@ -836,6 +855,7 @@ function sellAsset(state, provinceCapital, targetKey) {
     t.structureLevel = null;
   }
   province.money += price;
+  recordAction(state, { r: state.round, p: state.currentPlayer, a: "sell", at: targetKey, v: price });
   return { ok: true, price };
 }
 
@@ -855,6 +875,7 @@ function snapshotState(state) {
     gameOver: state.gameOver,
     gameOverReason: state.gameOverReason,
     doctrines: state.players.map(pl => [...(pl.doctrines || [])]),
+    historyLength: state.history ? state.history.length : 0,
     throneHolder: state.throneHolder,
     throneHeldRounds: state.throneHeldRounds,
   });
@@ -879,4 +900,9 @@ function restoreState(state, snapshot) {
   }
   state.throneHolder = data.throneHolder ?? -1;
   state.throneHeldRounds = data.throneHeldRounds ?? 0;
+  // History is append-only, so restoring truncates to the recorded length.
+  if (!state.history) state.history = [];
+  if (data.historyLength !== undefined) {
+    state.history.length = Math.min(state.history.length, data.historyLength);
+  }
 }

@@ -43,6 +43,7 @@
         localStorage.setItem(SAVE_KEY, JSON.stringify({
           snapshot: snapshotState(state),
           players: state.players,
+          history: state.history || [],
         }));
       }
     } catch (e) { /* storage unavailable: play without saves */ }
@@ -61,10 +62,18 @@
     let data = null;
     try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { /* fall through */ }
     if (!data) { updateContinueButton(); return; }
+    loadGameData(data);
+  }
+
+  // Shared loader for saved games and imported files: data must carry
+  // { snapshot, players, history }.
+  function loadGameData(data) {
     state = {
       tiles: new Map(), players: data.players, provinces: [],
       nextProvinceId: 1, currentPlayer: 0, round: 1,
       mode: "standard", difficulty: "normal", rngState: null,
+      throneHolder: -1, throneHeldRounds: 0,
+      history: data.history || [],
       gameOver: null, gameOverReason: null,
     };
     restoreState(state, data.snapshot);
@@ -77,6 +86,69 @@
     renderer.fitToMap(state);
     refresh();
     maybeShowDoctrinePick();
+  }
+
+  // --- export / import -----------------------------------------------------
+
+  function buildExport() {
+    return {
+      format: "hexlands-game",
+      version: 1,
+      exported: new Date().toISOString(),
+      players: state.players,
+      history: state.history || [],
+      state: JSON.parse(snapshotState(state)),
+    };
+  }
+
+  function onExport() {
+    if (!state) return;
+    const blob = new Blob([JSON.stringify(buildExport(), null, 1)],
+      { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `hexlands-${state.mode}-round${state.round}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("Game exported — full state and move history");
+  }
+
+  function importGame(data) {
+    if (!data || data.format !== "hexlands-game") {
+      showToast("Not a Hexlands game file");
+      return false;
+    }
+    if (data.version !== 1) {
+      showToast(`Unsupported game-file version (${data.version})`);
+      return false;
+    }
+    try {
+      loadGameData({
+        snapshot: JSON.stringify(data.state),
+        players: data.players,
+        history: data.history,
+      });
+      saveGame();
+      showToast(`Game imported — ${state.mode}, round ${state.round}`);
+      if (state.gameOver) maybeShowGameOver();
+      return true;
+    } catch (e) {
+      showToast("Import failed — file looks corrupted");
+      return false;
+    }
+  }
+
+  function onImportFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ""; // allow re-importing the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data = null;
+      try { data = JSON.parse(reader.result); } catch (err) { /* handled below */ }
+      importGame(data);
+    };
+    reader.readAsText(file);
   }
 
   function attempt(fn) {
@@ -317,6 +389,12 @@
   document.getElementById("btn-farm").addEventListener("click", () => armPlacement("farm"));
   document.getElementById("btn-sell").addEventListener("click", () => armPlacement("sell"));
   document.getElementById("btn-continue").addEventListener("click", resumeGame);
+  document.getElementById("btn-export").addEventListener("click", onExport);
+  document.getElementById("btn-import").addEventListener("click",
+    () => document.getElementById("import-file").click());
+  document.getElementById("btn-import-start").addEventListener("click",
+    () => document.getElementById("import-file").click());
+  document.getElementById("import-file").addEventListener("change", onImportFile);
   document.getElementById("btn-end").addEventListener("click", onEndTurn);
   document.getElementById("btn-undo").addEventListener("click", onUndo);
 
@@ -324,7 +402,12 @@
   renderer.resize();
 
   // Debug/testing handle (also handy when prototyping new features).
-  window.hexlands = { getState: () => state, renderer };
+  window.hexlands = {
+    getState: () => state,
+    renderer,
+    exportGame: () => buildExport(),
+    importGame,
+  };
 
   (function loop() {
     if (state) renderer.draw(state, ui);
