@@ -639,6 +639,9 @@ function moveUnit(state, fromKey, toKey) {
     dest.structure = null;
     dest.structureLevel = null;
   }
+  // Storming a tower costs the stormer: the tower is taken intact but the
+  // capturing unit is spent in the assault. Towers can never be destroyed.
+  if (dest.structure === "tower") dest.unit = null;
   dest.tree = null;
   dest.grave = false;
   unit.moved = true;
@@ -703,6 +706,7 @@ function buyUnit(state, provinceCapital, targetKey) {
     dest.structure = null;
     dest.structureLevel = null;
   }
+  if (dest.structure === "tower") dest.unit = null; // stormers die taking towers
   dest.tree = null;
   dest.grave = false;
   plunderVillage(state, dest, province);

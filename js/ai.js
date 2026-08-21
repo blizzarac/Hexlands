@@ -437,7 +437,10 @@ function attackOnce(state, player, province, diff, style) {
         const t = state.tiles.get(nk);
         if (!t || t.owner === player) continue;
         if (!canCapture(state, eff, nk, player)) continue;
-        const value = targetValue(state, nk, player, diff, style, cutMemo);
+        let value = targetValue(state, nk, player, diff, style, cutMemo);
+        // Storming a tower spends this unit's life — price the trade so a
+        // baron isn't thrown away on a watchtower a spearman could take.
+        if (t.structure === "tower") value -= (unit.level - 1) * 3;
         // Prefer higher value; tiebreak toward the weaker unit.
         if (!best || value > best.value ||
             (value === best.value && unit.level < state.tiles.get(best.from).unit.level)) {
