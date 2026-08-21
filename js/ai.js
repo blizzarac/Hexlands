@@ -49,6 +49,13 @@ const AI_DIFFICULTIES = {
     defend: true,  // garrison threatened assets: counters human-style raids
     strip: false,  // measured net-negative in tournaments; kept for tuning
     siege: false,  // measured net-negative in tournaments; kept for tuning
+    escalate: true, // once the frontier is all enemy, level units up (merges
+                    // + buy-upgrades) instead of spamming peasants — a flat
+                    // level-1 army loses to anyone who fields knights
+                    // (learned from a shared game log; 63% vs hard, same as
+                    // before, but now breaks walls)
+    raidgate: false, // suppress low-value peasant raids: measured clearly
+                     // net-negative (38% mirror) — raids buy real tempo
   },
 };
 
@@ -254,6 +261,27 @@ function setupSieges(state, player, province, diff, style) {
   }
 }
 
+// Escalation phase gate: while free land dominates the border, cheap
+// peasants claiming neutral tiles out-tempo everything, so levelling up
+// waits until the enemy front is the bigger share of the frontier.
+// Tournament-tuned: ungated escalation measured 43% vs hard; gating on the
+// enemy front dominating restores the full 63% while still firing mid-war.
+function frontierIsWar(state, province) {
+  let enemy = 0, neutral = 0;
+  const seen = new Set();
+  for (const k of province.tiles) {
+    for (const nk of neighborKeys(k)) {
+      if (seen.has(nk)) continue;
+      seen.add(nk);
+      const t = state.tiles.get(nk);
+      if (!t || t.owner === province.owner) continue;
+      if (t.owner === -1) neutral++; else enemy++;
+    }
+  }
+  return enemy > 0 && enemy >= neutral * WAR_FRONT_RATIO;
+}
+let WAR_FRONT_RATIO = 1; // enemy border tiles per neutral one before escalating
+
 function borderTargets(state, province) {
   const targets = new Set();
   for (const k of province.tiles) {
@@ -411,7 +439,20 @@ function tryMerge(state, player, province, diff, style) {
   const targets = borderTargets(state, province);
   const maxDefense = Math.max(0, ...targets.map(k => tileDefense(state, k)));
   const maxLevel = Math.max(...idle.map(k => effectiveUnitLevel(state, k)));
-  if (maxLevel > maxDefense) return; // a single unit could already do the job
+
+  // What the merged unit must beat. The classic rule demands it crack the
+  // hardest border tile — which peasants facing a defence-2 wall can never
+  // reach in one merge, so the army stays level 1 forever. Escalating AIs
+  // instead climb one rung at a time: any merge that out-levels the current
+  // army is allowed while some border tile stays blocked.
+  let needed = maxDefense;
+  if (diff.escalate && frontierIsWar(state, province)) {
+    const blocked = targets.some(k => tileDefense(state, k) >= maxLevel);
+    if (!blocked || maxLevel >= MAX_UNIT_LEVEL) return;
+    needed = maxLevel;
+  } else if (maxLevel > maxDefense) {
+    return; // a single unit could already do the job
+  }
 
   // Find a pair the mover can actually walk to.
   idle.sort((a, b) => state.tiles.get(a).unit.level - state.tiles.get(b).unit.level);
@@ -421,7 +462,7 @@ function tryMerge(state, player, province, diff, style) {
     for (const b of idle) {
       if (b === a || !dist.has(b)) continue;
       const combined = ua.level + state.tiles.get(b).unit.level;
-      if (combined > MAX_UNIT_LEVEL || combined <= maxDefense) continue;
+      if (combined > MAX_UNIT_LEVEL || combined <= needed) continue;
       // Only merge if the province can afford the heavier upkeep.
       const extraUpkeep = UNIT_UPKEEP[combined] -
         UNIT_UPKEEP[ua.level] - UNIT_UPKEEP[state.tiles.get(b).unit.level];
@@ -468,6 +509,49 @@ function spendMoney(state, player, province, diff, style) {
     }
   }
 
+  // Escalation: when the frontier's prizes are walled off beyond every unit
+  // this province owns, another peasant is money down the drain — put the
+  // coins into levelling an existing unit (buying onto a unit raises it one
+  // level) until it can break through.
+  const atWar = diff.smart ? frontierIsWar(state, province) : false;
+  if (diff.escalate && atWar) {
+    const memo = new Map();
+    let maxEff = 0;
+    for (const k of province.tiles) {
+      const t = state.tiles.get(k);
+      if (t.unit) maxEff = Math.max(maxEff, effectiveUnitLevel(state, k));
+    }
+    let target = null, bestV = 5; // only worthwhile prizes justify the upkeep
+    if (maxEff > 0 && maxEff < MAX_UNIT_LEVEL) {
+      for (const k of borderTargets(state, province)) {
+        const d = tileDefense(state, k, player);
+        // Skip what we can already take, and defence-4 walls — those need a
+        // tower-boosted baron (the siege game), not a bigger unit.
+        if (d < maxEff || d >= MAX_STRUCTURE_DEFENSE) continue;
+        const v = targetValue(state, k, player, diff, style, memo);
+        if (v > bestV) { bestV = v; target = { k, d }; }
+      }
+    }
+    if (target) {
+      const uks = province.tiles
+        .filter(k => {
+          const t = state.tiles.get(k);
+          return t.unit && t.unit.level < MAX_UNIT_LEVEL;
+        })
+        .sort((a, b) => hexDistance(a, target.k) - hexDistance(b, target.k));
+      const uk = uks[0];
+      for (let guard = 0; uk && guard < MAX_UNIT_LEVEL; guard++) {
+        const lvl = state.tiles.get(uk).unit.level;
+        if (lvl > target.d || lvl >= MAX_UNIT_LEVEL) break; // strong enough
+        if (province.money < unitCost(state, player) + diff.reserve) break;
+        const extra = UNIT_UPKEEP[lvl + 1] - UNIT_UPKEEP[lvl];
+        const net = provinceIncome(state, province) - provinceUpkeep(state, province);
+        if (net - extra < 0 && province.money < 50) break; // not into bankruptcy
+        if (!buyUnit(state, province.capitalKey, uk).ok) break;
+      }
+    }
+  }
+
   // Buy units that immediately capture something.
   for (let bought = 0; bought < diff.buyCap; bought++) {
     const buyMemo = diff.smart ? new Map() : null; // fresh: captures reshape provinces
@@ -482,6 +566,15 @@ function spendMoney(state, player, province, diff, style) {
 
     const targets = borderTargets(state, province)
       .filter(k => canCapture(state, 1, k, player))
+      .filter(k => {
+        if (!diff.raidgate || !atWar) return true;
+        const t = state.tiles.get(k);
+        if (t.owner === -1) return true; // neutral expansion is always fine
+        // A peasant dropped on a plain enemy tile flips straight back next
+        // turn — only real prizes (structures, landmarks, throne, cuts)
+        // justify the coins.
+        return targetValue(state, k, player, diff, style, buyMemo) >= 8;
+      })
       .sort((a, b) =>
         targetValue(state, b, player, diff, style, buyMemo) -
         targetValue(state, a, player, diff, style, buyMemo));
