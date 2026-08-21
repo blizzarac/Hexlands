@@ -105,8 +105,8 @@ Two modes:
   **Hexed** adds planning on top of Hard's perfect execution — frontier-aware
   expansion (tuned by AI-vs-AI tournament), captures aimed at articulation
   tiles that split your provinces, and garrisons on the tiles you could
-  actually capture — plus one open handicap: every AI province earns +2
-  income. It is meant to be unfair; beating it means outplaying it.
+  actually capture. Like every difficulty, it never cheats on resources:
+  beating it is purely a matter of outplaying it.
 - **Playstyles**: each AI is dealt a personality, shown beside its name —
   ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands),
   🛡️ Turtle (fortifies), ⚖️ Balanced.

@@ -315,9 +315,6 @@ function provinceIncome(state, p) {
   if (hasDoctrine(state, p.owner, "banking")) {
     income += Math.min(4, Math.floor(p.money / 25));
   }
-  // Hexed difficulty: AI realms are blessed with +2 income per province.
-  // Disclosed in the help text — the one open handicap on top of smarter play.
-  if (state.difficulty === "hexed" && p.owner > 0) income += 2;
   return income;
 }
 
