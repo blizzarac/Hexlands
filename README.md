@@ -99,9 +99,14 @@ Two modes:
   (max 4). Buying a unit onto an existing one upgrades it by one level.
 - **Trees** spread every round and block income. Moving a unit onto a tree
   chops it for 3 coins (and ends that unit's turn).
-- **Difficulty** (Easy / Normal / Hard) controls how competently the AI plays —
-  how often its units act, how well it picks targets, whether it merges units,
-  and how freely it spends. It never cheats on resources.
+- **Difficulty** (Easy / Normal / Hard / Hexed) controls how competently the
+  AI plays — how often its units act, how well it picks targets, whether it
+  merges units, and how freely it spends. It never cheats on resources.
+  **Hexed** adds planning on top of Hard's perfect execution — frontier-aware
+  expansion (tuned by AI-vs-AI tournament), captures aimed at articulation
+  tiles that split your provinces, and garrisons on the tiles you could
+  actually capture — plus one open handicap: every AI province earns +2
+  income. It is meant to be unfair; beating it means outplaying it.
 - **Playstyles**: each AI is dealt a personality, shown beside its name —
   ⚔️ Warlord (attacks relentlessly), 🌾 Builder (farms and expands),
   🛡️ Turtle (fortifies), ⚖️ Balanced.

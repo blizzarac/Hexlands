@@ -180,36 +180,10 @@ const TERRAIN_LABELS = {
   hills: "Hills · no income, towers defend +1",
 };
 
-// Every own tile the enemy could capture on their next turn: reachable unit
-// attacks (aura included) plus direct peasant buy-captures.
+// Every own tile the enemy could capture on their next turn (delegates to
+// the shared analysis in rules.js).
 function computeThreats(state) {
-  const threats = new Set();
-  for (const p of state.provinces) {
-    if (p.owner === 0) continue;
-    if (p.money >= UNIT_COST) {
-      for (const k of p.tiles) {
-        for (const nk of neighborKeys(k)) {
-          const t = state.tiles.get(nk);
-          if (t && t.owner === 0 && canCapture(state, 1, nk, p.owner)) threats.add(nk);
-        }
-      }
-    }
-    for (const uk of p.tiles) {
-      const t = state.tiles.get(uk);
-      if (!t.unit) continue;
-      const range = moveRange(state, p.owner, t.unit);
-      const dist = reachableWithin(state, uk, range);
-      const eff = effectiveUnitLevel(state, uk);
-      for (const [k, d] of dist) {
-        if (d > range - 1) continue;
-        for (const nk of neighborKeys(k)) {
-          const tt = state.tiles.get(nk);
-          if (tt && tt.owner === 0 && canCapture(state, eff, nk, p.owner)) threats.add(nk);
-        }
-      }
-    }
-  }
-  return threats;
+  return computeCapturableTiles(state, 0);
 }
 
 function updateTileTooltip(state, key, sx, sy) {

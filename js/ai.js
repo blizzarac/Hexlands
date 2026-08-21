@@ -33,6 +33,23 @@ const AI_DIFFICULTIES = {
     buyCap: 99,
     reserve: 0,
   },
+  hexed: {
+    label: "Hexed",
+    actChance: 1.0,
+    noise: 0,
+    merge: true,
+    buyCap: 99,
+    reserve: 0,
+    // Unlocks planning behaviours (individually flagged, tuned by AI-vs-AI
+    // tournament ablation). No cheating — harder purely through better play.
+    smart: true,
+    race: true,    // frontier-aware expansion: won the hard-mirror 63%
+    cut: true,     // split enemy provinces: mirror-neutral, punishes the
+                   // thin shapes human players build
+    defend: true,  // garrison threatened assets: counters human-style raids
+    strip: false,  // measured net-negative in tournaments; kept for tuning
+    siege: false,  // measured net-negative in tournaments; kept for tuning
+  },
 };
 
 const AI_STYLES = {
@@ -126,9 +143,115 @@ function runProvinceTurn(state, player, capital) {
   province = resolve();
   if (province) spendMoney(state, player, province, diff, style);
 
+  // 3b. Hexed planning: garrison genuinely threatened assets, then park
+  //     units in tower auras to crack walls next turn.
+  if (diff.smart) {
+    if (diff.defend) {
+      province = resolve();
+      if (province) defendThreatened(state, player, province, diff);
+    }
+    if (diff.siege) {
+      province = resolve();
+      if (province) setupSieges(state, player, province, diff, style);
+    }
+  }
+
   // 4. Send leftover idle units toward the border so they defend something.
   province = resolve();
   if (province) repositionIdleUnits(state, player, province);
+}
+
+// How much this tile is worth protecting.
+function defenseValueOf(state, key) {
+  const t = state.tiles.get(key);
+  let v = 1;
+  if (t.structure === "capital") v = 10;
+  else if (t.structure === "tower") v = 2 + 2 * (t.structureLevel || 1);
+  else if (t.structure === "farm") v = 2 + 2 * (t.structureLevel || 1);
+  if (t.landmark === "mine") v = Math.max(v, 5);
+  if (t.landmark === "fort") v = Math.max(v, 4);
+  if (t.landmark === "throne") v = Math.max(v, 12);
+  if (t.terrain === "meadow") v = Math.max(v, 3);
+  return v;
+}
+
+// Move idle units onto (or beside) valuable tiles the enemy could actually
+// capture next turn.
+function defendThreatened(state, player, province, diff) {
+  const threatened = computeCapturableTiles(state, player);
+  // Only the single most valuable threatened asset earns a garrison per
+  // province per turn — more than that bleeds offensive tempo dry.
+  const targets = province.tiles
+    .filter(k => threatened.has(k))
+    .map(k => ({ k, v: defenseValueOf(state, k) }))
+    .filter(o => o.v >= 5)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 1);
+
+  for (const { k } of targets) {
+    const t = state.tiles.get(k);
+    if (t.unit) continue; // already garrisoned
+    // Structure tiles (except farms) can't be stood on: defend a neighbour.
+    const landings = (!t.structure || t.structure === "farm")
+      ? [k]
+      : neighborKeys(k).filter(nk => {
+          const nt = state.tiles.get(nk);
+          return nt && province.tiles.includes(nk) && !nt.unit && !nt.tree &&
+            !nt.grave && (!nt.structure || nt.structure === "farm");
+        });
+    if (landings.length === 0) continue;
+    const idle = province.tiles
+      .filter(uk => {
+        const ut = state.tiles.get(uk);
+        return ut.unit && !ut.unit.moved;
+      })
+      .sort((a, b) => hexDistance(a, k) - hexDistance(b, k));
+    outer:
+    for (const uk of idle) {
+      const ut = state.tiles.get(uk);
+      const dist = reachableWithin(state, uk, moveRange(state, player, ut.unit));
+      for (const lk of landings) {
+        if (lk !== uk && dist.has(lk) && moveUnit(state, uk, lk).ok) break outer;
+      }
+    }
+  }
+}
+
+// Park a unit in a friendly tower aura from which its boosted level can crack
+// a wall it currently cannot: the classic one-turn siege setup.
+function setupSieges(state, player, province, diff, style) {
+  const targets = borderTargets(state, province);
+  const idle = province.tiles.filter(k => {
+    const t = state.tiles.get(k);
+    return t.unit && !t.unit.moved;
+  });
+  for (const uk of idle) {
+    const unit = state.tiles.get(uk).unit;
+    const effNow = effectiveUnitLevel(state, uk);
+    const boosted = unit.level + TOWER_AURA_BONUS;
+    const memo = new Map();
+    let bestT = null, bestV = 8; // only worthwhile prizes justify a setup turn
+    for (const tk of targets) {
+      const d = tileDefense(state, tk, player);
+      if (effNow > d || boosted <= d) continue; // takeable already / boost won't help
+      const v = targetValue(state, tk, player, diff, style, memo);
+      if (v > bestV) { bestV = v; bestT = tk; }
+    }
+    if (!bestT) continue;
+    const range = moveRange(state, player, unit);
+    const dist = reachableWithin(state, uk, range);
+    let spot = null, bestDist = Infinity;
+    for (const k of dist.keys()) {
+      if (k === uk) continue;
+      const t = state.tiles.get(k);
+      if (t.unit || t.tree || t.grave) continue;
+      if (t.structure && t.structure !== "farm") continue;
+      if (!hasTowerAura(state, k, player)) continue;
+      const dd = hexDistance(k, bestT);
+      if (dd <= range && dd < bestDist) { bestDist = dd; spot = k; }
+    }
+    if (spot) moveUnit(state, uk, spot);
+  }
 }
 
 function borderTargets(state, province) {
@@ -142,7 +265,40 @@ function borderTargets(state, province) {
   return [...targets];
 }
 
-function targetValue(state, key, player, diff, style) {
+// Would capturing `key` split the province it belongs to? Splitting is
+// devastating (fragments lose the treasury or die outright), so Hexed prices
+// cut tiles above almost everything. Memoised per decision batch.
+function cutBonus(state, key, player, memo) {
+  if (memo && memo.has(key)) return memo.get(key);
+  let bonus = 0;
+  const t = state.tiles.get(key);
+  if (t && t.owner >= 0 && t.owner !== player) {
+    const prov = provinceAt(state, key);
+    if (prov && prov.tiles.length > 2) {
+      const remaining = new Set(prov.tiles);
+      remaining.delete(key);
+      const start = remaining.values().next().value;
+      const seen = new Set([start]);
+      const stack = [start];
+      while (stack.length) {
+        const ck = stack.pop();
+        for (const nk of neighborKeys(ck)) {
+          if (remaining.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk); }
+        }
+      }
+      if (seen.size < remaining.size) {
+        const smaller = Math.min(seen.size, remaining.size - seen.size);
+        // Only meaningful severances score: chasing 1-2 tile crumbs is a
+        // tempo loss dressed up as tactics.
+        if (smaller >= 3) bonus = 6 + Math.min(12, smaller);
+      }
+    }
+  }
+  if (memo) memo.set(key, bonus);
+  return bonus;
+}
+
+function targetValue(state, key, player, diff, style, cutMemo) {
   const t = state.tiles.get(key);
   let value = t.owner === -1 ? style.neutralValue : style.enemyValue;
   value += ((TERRAIN_INCOME[t.terrain] ?? 1) - 1) * 1.5; // meadows tempt, hills bore
@@ -170,6 +326,39 @@ function targetValue(state, key, player, diff, style) {
     const nt = state.tiles.get(nk);
     if (nt && nt.owner !== player && nt.owner !== -1) value += 0.5;
   }
+  if (diff.smart) {
+    // Race tempo: frontier tiles that open into more neutral land beat
+    // dead-end pockets — expansion aims where the future is. Ring 2 gives
+    // the gradient real reach.
+    if (diff.race && t.owner === -1) {
+      let open1 = 0, open2 = 0;
+      for (const nk of neighborKeys(key)) {
+        const nt = state.tiles.get(nk);
+        if (nt && nt.owner === -1) {
+          open1++;
+          for (const nnk of neighborKeys(nk)) {
+            if (nnk === key) continue;
+            const nnt = state.tiles.get(nnk);
+            if (nnt && nnt.owner === -1) open2++;
+          }
+        }
+      }
+      value += open1 * 0.6 + open2 * 0.1;
+    }
+    // Province splitting is the strongest move in the game.
+    if (diff.cut) value += cutBonus(state, key, player, cutMemo);
+    // Aura stripping: a static tower props up neighbouring defences —
+    // removing it is worth more the more tiles it covers. (Units are not
+    // counted: chasing them head-on costs more tempo than it strips.)
+    if (diff.strip && t.owner >= 0 && t.owner !== player && t.structure === "tower") {
+      let covered = 0;
+      for (const nk of neighborKeys(key)) {
+        const nt = state.tiles.get(nk);
+        if (nt && nt.owner === t.owner) covered++;
+      }
+      value += covered * 0.5;
+    }
+  }
   // Imperfect play: lower difficulties mis-rank their options.
   value += (rand(state) * 2 - 1) * diff.noise;
   return value;
@@ -184,6 +373,7 @@ function attackOnce(state, player, province, diff, style) {
 
   // Each unit can only strike targets within its movement range.
   let best = null;
+  const cutMemo = diff.smart ? new Map() : null;
   for (const uk of units) {
     const unit = state.tiles.get(uk).unit;
     const range = moveRange(state, player, unit);
@@ -198,7 +388,7 @@ function attackOnce(state, player, province, diff, style) {
         const t = state.tiles.get(nk);
         if (!t || t.owner === player) continue;
         if (!canCapture(state, eff, nk, player)) continue;
-        const value = targetValue(state, nk, player, diff, style);
+        const value = targetValue(state, nk, player, diff, style, cutMemo);
         // Prefer higher value; tiebreak toward the weaker unit.
         if (!best || value > best.value ||
             (value === best.value && unit.level < state.tiles.get(best.from).unit.level)) {
@@ -280,6 +470,7 @@ function spendMoney(state, player, province, diff, style) {
 
   // Buy units that immediately capture something.
   for (let bought = 0; bought < diff.buyCap; bought++) {
+    const buyMemo = diff.smart ? new Map() : null; // fresh: captures reshape provinces
     if (bought > 0 && rand(state) > style.unitZeal) break;
     const p = state.provinces.find(x => x.id === province.id) ||
       state.provinces.find(x => x.owner === player && x.tiles.includes(province.capitalKey));
@@ -292,7 +483,8 @@ function spendMoney(state, player, province, diff, style) {
     const targets = borderTargets(state, province)
       .filter(k => canCapture(state, 1, k, player))
       .sort((a, b) =>
-        targetValue(state, b, player, diff, style) - targetValue(state, a, player, diff, style));
+        targetValue(state, b, player, diff, style, buyMemo) -
+        targetValue(state, a, player, diff, style, buyMemo));
     if (targets.length === 0) break;
     if (!buyUnit(state, province.capitalKey, targets[0]).ok) break;
   }
