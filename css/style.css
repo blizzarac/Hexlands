@@ -75,6 +75,7 @@ button.mini {
   border-radius: 6px;
   background: rgba(30, 42, 58, 0.85);
 }
+button.mini.hidden { display: none; }
 #throne-status.danger { color: #ff9b8a; }
 .chip.current { outline: 1.5px solid rgba(255, 255, 255, 0.75); }
 

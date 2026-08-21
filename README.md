@@ -141,7 +141,10 @@ by every player (`history`: moves with capture/merge flags, purchases,
 upgrades, sells, doctrine picks, each tagged with round and player). Import
 (top bar or start screen) restores such a file exactly, including duel-mode
 determinism. The format is deliberately analysis-friendly: share a game for
-review, or attach it to a bug/balance report.
+review, or attach it to a bug/balance report. The game-over panel offers
+Export too, and its *Review the Final Board* button dismisses the panel so
+you can study the end position — the Results button in the top bar brings
+the panel back.
 
 ## Code layout
 
