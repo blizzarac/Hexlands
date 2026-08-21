@@ -719,17 +719,15 @@ function buyTower(state, provinceCapital, targetKey) {
   return { ok: true };
 }
 
+// Farms go on any empty, farmable tile of the province — the rising price
+// per farm is the only limiter.
 function canPlaceFarm(state, province, key) {
   const t = state.tiles.get(key);
   if (!t || !province.tiles.includes(key)) return false;
   if (t.terrain === "hills") return false; // too rocky to farm
   if (t.landmark) return false;
   if (t.unit || t.structure || t.tree || t.grave) return false;
-  return neighborKeys(key).some(nk => {
-    const nt = state.tiles.get(nk);
-    return nt && nt.owner === province.owner && province.tiles.includes(nk) &&
-      (nt.structure === "farm" || nt.structure === "capital");
-  });
+  return true;
 }
 
 function buyFarm(state, provinceCapital, targetKey) {
@@ -752,7 +750,7 @@ function buyFarm(state, provinceCapital, targetKey) {
   const cost = farmCost(state, province);
   if (province.money < cost) return { ok: false, reason: "Not enough money" };
   if (!canPlaceFarm(state, province, targetKey)) {
-    return { ok: false, reason: "Farms need an empty tile next to the capital or another farm" };
+    return { ok: false, reason: "Farms need an empty tile (not hills or landmarks)" };
   }
   province.money -= cost;
   dest.structure = "farm";
