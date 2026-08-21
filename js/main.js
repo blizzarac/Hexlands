@@ -109,14 +109,21 @@
   function onExport() {
     if (!state) return;
     if (playback) endPlayback(); // export the real end-of-turn state
+    const name = `hexlands-${state.mode}-round${state.round}.json`;
     const blob = new Blob([JSON.stringify(buildExport(), null, 1)],
       { type: "application/json" });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `hexlands-${state.mode}-round${state.round}.json`;
+    a.href = url;
+    a.download = name;
+    a.rel = "noopener";
+    // The anchor must be in the document, and the blob URL must outlive the
+    // click — revoking synchronously cancels the download in some browsers.
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
-    showToast("Game exported — full state and move history");
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    showToast(`Game exported as ${name}`, 3500);
   }
 
   function importGame(data) {
